@@ -1,0 +1,141 @@
+# Codebase Structure
+
+**Analysis Date:** 2026-02-16
+
+## Directory Layout
+
+```
+polymarket-stat-arb/
+├── .claude/                # Claude Code configuration & skills
+├── .planning/              # GSD planning documents (this directory)
+│   └── codebase/          # Codebase analysis documents
+├── docs/                   # Comprehensive research & strategy docs
+│   └── strategy-analysis/ # Individual strategy deep dives
+├── scripts/                # Utility scripts
+├── src/                    # Application source code
+│   ├── scanner/           # Market scanning & arbitrage detection
+│   ├── executor/          # Order execution (stub)
+│   ├── monitor/           # Position monitoring (stub)
+│   └── utils/             # Shared utilities (client, retry, risk)
+├── config.example.yaml     # Configuration template
+├── requirements.txt        # Python dependencies
+├── README.md               # Project documentation
+└── .gitignore              # Git ignore rules
+```
+
+## Directory Purposes
+
+**docs/**
+- Purpose: Research documentation, strategy analysis, API references
+- Contains: 21 markdown files covering strategies, API specs, deployment
+- Key files: `HANDOFF_DATA_DAEMON.md` (next implementation target), `POLYMARKET_VERIFIED_REFERENCE.md` (API ground truth), `STRATEGY_DEEP_DIVE.md` (6 trading strategies)
+- Subdirectories: `strategy-analysis/` (6 individual strategy files + summary)
+
+**src/**
+- Purpose: All application source code
+- Contains: Python modules organized by function
+- Key files: `__init__.py`, `main.py` (CLI entry), `config.py` (configuration)
+
+**src/scanner/**
+- Purpose: Market discovery and arbitrage detection
+- Contains: Scanner loop and arbitrage algorithms
+- Key files: `main.py` (MarketScanner class), `arbitrage.py` (ArbitrageScanner, Market dataclass)
+
+**src/executor/**
+- Purpose: Order execution and position management (not yet implemented)
+- Contains: Empty `__init__.py` placeholder only
+
+**src/monitor/**
+- Purpose: Position monitoring, P&L tracking, alerts (not yet implemented)
+- Contains: Empty `__init__.py` placeholder only
+
+**src/utils/**
+- Purpose: Shared infrastructure utilities
+- Contains: API client, retry/rate limiting, circuit breaker, heartbeat
+- Key files: `client.py` (PolymarketClient), `retry.py` (retry + rate limiters), `circuit_breaker.py` (risk management), `heartbeat.py` (CLOB heartbeat)
+
+**scripts/**
+- Purpose: Standalone utility scripts
+- Contains: `test_connection.py` (API connectivity check)
+
+## Key File Locations
+
+**Entry Points:**
+- `src/main.py` - CLI entry point (Click commands: scan, run, check, price, book)
+- `src/scanner/main.py` - Direct scanner entry (`python -m src.scanner.main`)
+- `scripts/test_connection.py` - API connectivity test
+
+**Configuration:**
+- `config.example.yaml` - Configuration template (all settings with defaults)
+- `src/config.py` - Pydantic config schema and loader
+- `requirements.txt` - Python dependencies
+
+**Core Logic:**
+- `src/scanner/arbitrage.py` - Arbitrage detection algorithms, Market/ArbitrageOpportunity dataclasses
+- `src/utils/client.py` - PolymarketClient (Gamma + CLOB + Data API wrapper)
+- `src/utils/retry.py` - Retry decorator, RateLimiter class, pre-configured limiters
+- `src/utils/circuit_breaker.py` - CircuitBreaker with disk persistence
+- `src/utils/heartbeat.py` - HeartbeatManager for CLOB order keepalive
+
+**Testing:**
+- No test files exist yet
+- `requirements.txt` lists pytest, pytest-asyncio as dependencies
+
+**Documentation:**
+- `README.md` - Project overview
+- `docs/` - 21 research/strategy documents
+
+## Naming Conventions
+
+**Files:**
+- snake_case.py for all Python modules (`circuit_breaker.py`, `test_connection.py`)
+- UPPER_SNAKE_CASE.md for documentation (`HANDOFF_DATA_DAEMON.md`, `README.md`)
+- `__init__.py` for package markers
+
+**Directories:**
+- lowercase singular for modules (`scanner`, `executor`, `monitor`)
+- lowercase plural for collections (`utils`, `docs`, `scripts`)
+
+**Special Patterns:**
+- `__init__.py` in every package directory (some are empty stubs)
+- `main.py` for entry points within packages (`src/main.py`, `src/scanner/main.py`)
+
+## Where to Add New Code
+
+**New Module (e.g., collector, db):**
+- Implementation: `src/{module_name}/`
+- Entry: `src/{module_name}/main.py` or `src/{module_name}/__init__.py`
+- Tests: `tests/{module_name}/` (planned pattern from handoff doc)
+
+**New Utility:**
+- Implementation: `src/utils/{utility_name}.py`
+- Tests: `tests/unit/test_{utility_name}.py`
+
+**New CLI Command:**
+- Definition: Add to `src/main.py` Click group
+- Handler: In relevant module
+
+**New Documentation:**
+- Research docs: `docs/{TOPIC_NAME}.md`
+- Strategy analysis: `docs/strategy-analysis/{NN}-{name}.md`
+
+## Special Directories
+
+**.claude/**
+- Purpose: Claude Code configuration, custom skills, agents
+- Committed: Yes (in `.claude/` at repo root)
+
+**.planning/**
+- Purpose: GSD planning system documents
+- Source: Generated by GSD workflow
+- Committed: Yes
+
+**docs/**
+- Purpose: Research and reference documentation
+- Source: Manual research and analysis
+- Committed: Yes
+
+---
+
+*Structure analysis: 2026-02-16*
+*Update when directory structure changes*
