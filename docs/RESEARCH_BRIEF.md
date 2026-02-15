@@ -1,5 +1,11 @@
 # Polymarket Research Brief
 
+## Status: ✅ COMPLETED (2026-02-15)
+
+**Output:** `docs/POLYMARKET_VERIFIED_REFERENCE.md`
+
+All sections have been researched and documented. See the verified reference for details.
+
 ## Purpose
 
 This document lists every Polymarket-specific detail that needs to be researched and verified from **primary sources** (official Polymarket docs, GitHub repos, on-chain data). The output should be a single comprehensive MD file that serves as the ground truth for our bot implementation.
