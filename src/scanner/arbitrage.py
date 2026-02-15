@@ -1,5 +1,6 @@
 """Arbitrage opportunity detection."""
 
+import json
 import logging
 from dataclasses import dataclass
 from datetime import datetime
@@ -197,28 +198,77 @@ class ArbitrageScanner:
         return total
 
 
-def parse_market_data(raw_data: dict) -> Optional[Market]:
-    """Parse raw API market data into Market object."""
+def _parse_stringified_json_array(raw: str, fallback: list) -> list:
+    """Parse a stringified JSON array from the Gamma API.
+
+    The Gamma API returns fields like outcomePrices and clobTokenIds as
+    stringified JSON arrays, e.g. '["0.52","0.48"]' — NOT comma-separated
+    values.  This helper handles both formats defensively.
+    """
+    if not raw:
+        return fallback
     try:
-        # Handle different API response formats
-        tokens = raw_data.get("clobTokenIds", "").split(",")
+        parsed = json.loads(raw)
+        if isinstance(parsed, list):
+            return parsed
+    except (json.JSONDecodeError, TypeError):
+        pass
+    # Fallback: try comma-split for unexpected formats
+    logger.warning("Unexpected non-JSON array format, falling back to comma-split: %r", raw)
+    parts = [p.strip().strip('"') for p in raw.split(",")]
+    return parts if len(parts) >= len(fallback) else fallback
+
+
+def _parse_end_date(raw_data: dict) -> Optional[datetime]:
+    """Parse endDate from various Gamma API formats."""
+    for field in ("endDate", "endDateIso", "end_date_iso"):
+        val = raw_data.get(field)
+        if not val:
+            continue
+        try:
+            # Handle ISO format with or without timezone
+            return datetime.fromisoformat(val.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            continue
+    return None
+
+
+def parse_market_data(raw_data: dict) -> Optional[Market]:
+    """Parse raw API market data into Market object.
+
+    The Gamma API returns outcomePrices and clobTokenIds as **stringified
+    JSON arrays** (e.g. '["0.52","0.48"]'), not native arrays or
+    comma-separated strings.  This function handles that correctly.
+    """
+    try:
+        tokens = _parse_stringified_json_array(
+            raw_data.get("clobTokenIds", ""), ["", ""]
+        )
+        prices = _parse_stringified_json_array(
+            raw_data.get("outcomePrices", ""), ["0.5", "0.5"]
+        )
+
+        # Ensure we have at least 2 elements
         if len(tokens) < 2:
-            tokens = [raw_data.get("clobTokenIds", ""), ""]
-        
-        prices = raw_data.get("outcomePrices", "").split(",")
+            tokens = tokens + [""] * (2 - len(tokens))
         if len(prices) < 2:
-            prices = ["0.5", "0.5"]
-        
+            prices = prices + ["0.5"] * (2 - len(prices))
+
+        yes_token = str(tokens[0]).strip()
+        no_token = str(tokens[1]).strip()
+        yes_price = float(prices[0]) if prices[0] else 0.5
+        no_price = float(prices[1]) if prices[1] else 0.5
+
         return Market(
             market_id=raw_data.get("id", raw_data.get("conditionId", "")),
             event_id=raw_data.get("event_id", ""),
             question=raw_data.get("question", ""),
-            yes_token_id=tokens[0].strip() if tokens[0] else "",
-            no_token_id=tokens[1].strip() if len(tokens) > 1 else "",
-            yes_price=float(prices[0]) if prices[0] else 0.5,
-            no_price=float(prices[1]) if len(prices) > 1 else 0.5,
-            volume_24h=float(raw_data.get("volume24hr", 0)),
-            end_date=None  # Parse if needed
+            yes_token_id=yes_token,
+            no_token_id=no_token,
+            yes_price=yes_price,
+            no_price=no_price,
+            volume_24h=float(raw_data.get("volume24hr", 0) or 0),
+            end_date=_parse_end_date(raw_data),
         )
     except Exception as e:
         logger.warning(f"Failed to parse market data: {e}")

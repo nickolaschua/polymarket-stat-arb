@@ -10,6 +10,7 @@ from py_clob_client.clob_types import BookParams, OrderArgs, MarketOrderArgs, Or
 from py_clob_client.order_builder.constants import BUY, SELL
 
 from src.config import Config, get_config
+from src.utils.heartbeat import HeartbeatManager
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,7 @@ class PolymarketClient:
         self._clob_client: Optional[ClobClient] = None
         self._http_client: Optional[httpx.AsyncClient] = None
         self._authenticated = False
+        self._heartbeat: Optional[HeartbeatManager] = None
 
     @property
     def clob(self) -> ClobClient:
@@ -244,11 +246,48 @@ class PolymarketClient:
         return self.clob.get_orders(OpenOrderParams())
 
     # =========================================================================
+    # Heartbeat Management
+    # =========================================================================
+
+    @property
+    def heartbeat(self) -> Optional[HeartbeatManager]:
+        """Get the heartbeat manager (available after authentication)."""
+        return self._heartbeat
+
+    async def start_heartbeat(self, on_failure=None):
+        """Start sending heartbeats to keep open orders alive.
+
+        IMPORTANT: Only call this when you are about to place orders.
+        Once started, stopping unexpectedly cancels ALL open orders.
+
+        Args:
+            on_failure: Optional async callback invoked when heartbeats
+                       fail persistently. Use for emergency alerts.
+        """
+        if not self._authenticated:
+            raise RuntimeError("Must authenticate before starting heartbeat")
+        if self._heartbeat and self._heartbeat.is_running:
+            logger.warning("Heartbeat already running")
+            return
+
+        self._heartbeat = HeartbeatManager(self._clob_client)
+        if on_failure:
+            self._heartbeat.on_failure(on_failure)
+        await self._heartbeat.start()
+
+    async def stop_heartbeat(self):
+        """Stop sending heartbeats. Orders will be cancelled by Polymarket."""
+        if self._heartbeat:
+            await self._heartbeat.stop()
+
+    # =========================================================================
     # Cleanup
     # =========================================================================
 
     async def close(self):
         """Clean up resources."""
+        if self._heartbeat and self._heartbeat.is_running:
+            await self._heartbeat.stop()
         if self._http_client:
             await self._http_client.aclose()
             self._http_client = None

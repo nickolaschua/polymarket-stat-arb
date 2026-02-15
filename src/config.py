@@ -28,20 +28,27 @@ class WalletConfig(BaseModel):
         return os.getenv(self.private_key_env)
 
 
+class RiskConfig(BaseModel):
+    max_daily_loss_usd: float = 50.0
+    max_drawdown_pct: float = 20.0
+    max_consecutive_losses: int = 5
+    circuit_breaker_state_file: str = "data/circuit_breaker_state.json"
+
+
 class StrategyConfig(BaseModel):
     # Arbitrage detection
     min_spread_pct: float = 2.0
     min_liquidity_usd: float = 100.0
-    
+
     # Position sizing
     max_position_usd: float = 100.0
     max_total_exposure_usd: float = 500.0
     kelly_fraction: float = 0.25
-    
+
     # Execution
     slippage_tolerance_pct: float = 0.5
     order_timeout_sec: int = 30
-    
+
     # Combinatorial
     enable_combinatorial: bool = True
     similarity_threshold: float = 0.8
@@ -88,6 +95,7 @@ class Config(BaseModel):
     
     polymarket: PolymarketConfig = Field(default_factory=PolymarketConfig)
     wallet: WalletConfig = Field(default_factory=WalletConfig)
+    risk: RiskConfig = Field(default_factory=RiskConfig)
     strategy: StrategyConfig = Field(default_factory=StrategyConfig)
     scanner: ScannerConfig = Field(default_factory=ScannerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)

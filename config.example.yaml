@@ -16,6 +16,12 @@ wallet:
   # Signature type: 0=EOA, 1=Magic/Email, 2=Gnosis Safe
   signature_type: 0
 
+risk:
+  max_daily_loss_usd: 50       # Trip circuit breaker after this daily loss
+  max_drawdown_pct: 20         # Trip after this % drawdown from peak
+  max_consecutive_losses: 5    # Trip after N consecutive losing trades
+  circuit_breaker_state_file: "data/circuit_breaker_state.json"
+
 strategy:
   # Arbitrage detection
   min_spread_pct: 2.0          # Minimum spread to consider (%)
