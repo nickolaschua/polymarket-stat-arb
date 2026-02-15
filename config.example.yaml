@@ -1,0 +1,70 @@
+# Polymarket Stat Arb - Configuration
+# Copy to config.yaml and fill in your values
+
+polymarket:
+  clob_host: "https://clob.polymarket.com"
+  gamma_host: "https://gamma-api.polymarket.com"
+  data_host: "https://data-api.polymarket.com"
+  ws_host: "wss://ws-subscriptions-clob.polymarket.com"
+  chain_id: 137  # Polygon mainnet
+
+wallet:
+  # Use environment variable for private key (NEVER hardcode!)
+  private_key_env: "POLY_PRIVATE_KEY"
+  # Your wallet address that holds USDC
+  funder_address: ""
+  # Signature type: 0=EOA, 1=Magic/Email, 2=Gnosis Safe
+  signature_type: 0
+
+strategy:
+  # Arbitrage detection
+  min_spread_pct: 2.0          # Minimum spread to consider (%)
+  min_liquidity_usd: 100       # Minimum orderbook depth
+  
+  # Position sizing
+  max_position_usd: 100        # Max per position
+  max_total_exposure_usd: 500  # Max total capital deployed
+  kelly_fraction: 0.25         # Fraction of Kelly criterion to use
+  
+  # Execution
+  slippage_tolerance_pct: 0.5  # Max acceptable slippage
+  order_timeout_sec: 30        # Cancel unfilled orders after
+  
+  # Combinatorial arbitrage
+  enable_combinatorial: true
+  similarity_threshold: 0.8    # For vector search grouping
+
+scanner:
+  # Polling intervals (seconds)
+  market_refresh_interval: 60
+  price_check_interval: 5
+  websocket_reconnect_delay: 5
+  
+  # Filters
+  min_volume_24h: 1000         # Ignore low-volume markets
+  max_days_to_resolution: 30   # Focus on near-term events
+
+database:
+  url: "sqlite+aiosqlite:///data/polymarket.db"
+  # For production, use PostgreSQL:
+  # url: "postgresql+asyncpg://user:pass@localhost/polymarket"
+
+alerts:
+  telegram:
+    enabled: true
+    bot_token_env: "TELEGRAM_BOT_TOKEN"
+    chat_id: ""
+  
+  # Alert thresholds
+  notify_on_opportunity: true
+  notify_on_trade: true
+  notify_min_spread_pct: 3.0   # Only alert spreads > 3%
+
+logging:
+  level: "INFO"
+  file: "logs/bot.log"
+  max_size_mb: 10
+  backup_count: 5
+
+# Paper trading mode (no real trades)
+paper_trading: true
