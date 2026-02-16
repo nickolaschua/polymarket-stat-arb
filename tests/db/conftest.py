@@ -5,6 +5,7 @@ against the test container before each test, ensuring the full schema
 is available.
 """
 
+import asyncio
 from pathlib import Path
 
 import asyncpg
@@ -13,6 +14,25 @@ import pytest
 from src.db.migrations.runner import run_migrations
 
 MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "src" / "db" / "migrations"
+
+
+async def _drop_with_retry(
+    conn: asyncpg.Connection, sql: str, max_retries: int = 3, delay: float = 0.5
+) -> None:
+    """Execute a DROP statement with retries for TimescaleDB deadlocks.
+
+    After COPY bulk inserts into hypertables, TimescaleDB background
+    workers may briefly hold advisory locks.  Retrying after a short
+    delay resolves the intermittent deadlock.
+    """
+    for attempt in range(max_retries):
+        try:
+            await conn.execute(sql)
+            return
+        except asyncpg.DeadlockDetectedError:
+            if attempt == max_retries - 1:
+                raise
+            await asyncio.sleep(delay * (attempt + 1))
 
 
 @pytest.fixture
@@ -25,14 +45,18 @@ async def migrated_pool(db_pool: asyncpg.Pool) -> asyncpg.Pool:
     """
     async with db_pool.acquire() as conn:
         # Clean slate: drop everything in reverse dependency order
-        await conn.execute("DROP TABLE IF EXISTS schema_migrations CASCADE;")
+        await _drop_with_retry(
+            conn, "DROP TABLE IF EXISTS schema_migrations CASCADE;"
+        )
 
         # Drop continuous aggregates first (they depend on hypertables)
-        await conn.execute(
-            "DROP MATERIALIZED VIEW IF EXISTS price_candles_1h CASCADE;"
+        await _drop_with_retry(
+            conn,
+            "DROP MATERIALIZED VIEW IF EXISTS price_candles_1h CASCADE;",
         )
-        await conn.execute(
-            "DROP MATERIALIZED VIEW IF EXISTS trade_volume_1h CASCADE;"
+        await _drop_with_retry(
+            conn,
+            "DROP MATERIALIZED VIEW IF EXISTS trade_volume_1h CASCADE;",
         )
 
         # Drop tables
@@ -43,7 +67,9 @@ async def migrated_pool(db_pool: asyncpg.Pool) -> asyncpg.Pool:
             "markets",
             "resolutions",
         ]:
-            await conn.execute(f"DROP TABLE IF EXISTS {table} CASCADE;")
+            await _drop_with_retry(
+                conn, f"DROP TABLE IF EXISTS {table} CASCADE;"
+            )
 
     applied = await run_migrations(db_pool, MIGRATIONS_DIR)
     assert len(applied) == 8, f"Expected 8 migrations, got {len(applied)}: {applied}"
