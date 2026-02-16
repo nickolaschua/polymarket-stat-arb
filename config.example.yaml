@@ -51,9 +51,18 @@ scanner:
   max_days_to_resolution: 30   # Focus on near-term events
 
 database:
-  url: "sqlite+aiosqlite:///data/polymarket.db"
-  # For production, use PostgreSQL:
-  # url: "postgresql+asyncpg://user:pass@localhost/polymarket"
+  url: "postgresql://polymarket:polymarket_dev@localhost:5432/polymarket"
+  min_pool_size: 2               # Minimum connections in asyncpg pool
+  max_pool_size: 10              # Maximum connections in asyncpg pool
+  max_inactive_connection_lifetime: 300.0  # Seconds before idle connection is closed
+  command_timeout: 60            # Default query timeout in seconds
+
+collector:
+  price_interval_sec: 60         # How often to snapshot prices
+  orderbook_interval_sec: 300    # How often to snapshot orderbooks
+  metadata_interval_sec: 300     # How often to refresh market metadata
+  trade_buffer_size: 1000        # Buffer size for trade ingestion
+  max_markets: 10000             # Maximum number of markets to track
 
 alerts:
   telegram:

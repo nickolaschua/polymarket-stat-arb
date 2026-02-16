@@ -63,7 +63,19 @@ class ScannerConfig(BaseModel):
 
 
 class DatabaseConfig(BaseModel):
-    url: str = "sqlite+aiosqlite:///data/polymarket.db"
+    url: str = "postgresql://polymarket:polymarket_dev@localhost:5432/polymarket"
+    min_pool_size: int = 2
+    max_pool_size: int = 10
+    max_inactive_connection_lifetime: float = 300.0
+    command_timeout: int = 60
+
+
+class CollectorConfig(BaseModel):
+    price_interval_sec: int = 60
+    orderbook_interval_sec: int = 300
+    metadata_interval_sec: int = 300
+    trade_buffer_size: int = 1000
+    max_markets: int = 10000
 
 
 class TelegramConfig(BaseModel):
@@ -99,6 +111,7 @@ class Config(BaseModel):
     strategy: StrategyConfig = Field(default_factory=StrategyConfig)
     scanner: ScannerConfig = Field(default_factory=ScannerConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    collector: CollectorConfig = Field(default_factory=CollectorConfig)
     alerts: AlertsConfig = Field(default_factory=AlertsConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     paper_trading: bool = True
