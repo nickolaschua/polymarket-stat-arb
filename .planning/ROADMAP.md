@@ -49,7 +49,7 @@ Plans:
 
 Plans:
 - [x] 02-01: Market Metadata Collector (Gamma API → upserts, respx setup)
-- [ ] 02-02: Price Snapshot Collector (Gamma API → COPY bulk insert)
+- [x] 02-02: Price Snapshot Collector (Gamma API → COPY bulk insert)
 - [ ] 02-03: Orderbook Snapshot Collector (CLOB sync→async, JSONB, chunking)
 
 #### Phase 3: WebSocket Trades + Resolution Tracker
@@ -93,7 +93,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
 | 1. Setup + Database Layer | v0.1 | 6/6 | Complete | 2026-02-17 |
-| 2. Core Collectors | v0.1 | 1/3 | In progress | - |
+| 2. Core Collectors | v0.1 | 2/3 | In progress | - |
 | 3. WebSocket Trades + Resolution Tracker | v0.1 | 0/? | Not started | - |
 | 4. Daemon Supervisor + CLI | v0.1 | 0/? | Not started | - |
 | 5. Hetzner Deployment | v0.1 | 0/? | Not started | - |
