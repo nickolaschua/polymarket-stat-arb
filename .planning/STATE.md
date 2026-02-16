@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 1 of 5 (Setup + Database Layer)
-Plan: 5 of 6 in current phase
-Status: In progress
-Last activity: 2026-02-17 - Completed 01-05-PLAN.md
+Plan: 6 of 6 in current phase
+Status: Phase complete
+Last activity: 2026-02-17 - Completed 01-06-PLAN.md
 
-Progress: ███░░░░░░░ 33%
+Progress: ████░░░░░░ 40%
 
 ## Accumulated Context
 
@@ -29,6 +29,9 @@ Progress: ███░░░░░░░ 33%
 - Batch upsert via simple loop (not executemany) since 5-min collector interval is not perf-critical (01-04)
 - COPY protocol via pool.copy_records_to_table() for price inserts (10-100x faster than executemany) (01-05)
 - _drop_with_retry() with asyncpg.DeadlockDetectedError for TimescaleDB background worker deadlocks in test fixtures (01-05)
+- executemany with $x::jsonb cast for orderbook inserts — COPY cannot encode Python dicts to JSONB (01-06)
+- Per-connection JSONB codec via set_type_codec() for dict round-trip on reads (01-06)
+- COPY protocol for trade inserts with UniqueViolationError fallback to ON CONFLICT DO NOTHING (01-06)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -46,5 +49,5 @@ Progress: ███░░░░░░░ 33%
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 01-05-PLAN.md
-Resume file: .planning/phases/01-setup-database-layer/01-06-PLAN.md
+Stopped at: Completed 01-06-PLAN.md — Phase 1 complete
+Resume file: None
