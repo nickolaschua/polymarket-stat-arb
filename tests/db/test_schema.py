@@ -5,50 +5,8 @@ the end-state schema: tables, hypertables, continuous aggregates,
 compression settings, indexes, and retention policies.
 """
 
-from pathlib import Path
-
 import asyncpg
 import pytest
-
-from src.db.migrations.runner import run_migrations
-
-# Path to the actual migration files (not a tmp copy)
-MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "src" / "db" / "migrations"
-
-
-@pytest.fixture
-async def migrated_pool(db_pool: asyncpg.Pool) -> asyncpg.Pool:
-    """Run all migrations and return the pool for schema inspection.
-
-    Drops all application objects first to ensure a clean slate, then
-    applies every migration from 001 through 008.
-    """
-    async with db_pool.acquire() as conn:
-        # Clean slate: drop everything in reverse dependency order
-        await conn.execute("DROP TABLE IF EXISTS schema_migrations CASCADE;")
-
-        # Drop continuous aggregates first (they depend on hypertables)
-        await conn.execute(
-            "DROP MATERIALIZED VIEW IF EXISTS price_candles_1h CASCADE;"
-        )
-        await conn.execute(
-            "DROP MATERIALIZED VIEW IF EXISTS trade_volume_1h CASCADE;"
-        )
-
-        # Drop tables
-        for table in [
-            "price_snapshots",
-            "orderbook_snapshots",
-            "trades",
-            "markets",
-            "resolutions",
-        ]:
-            await conn.execute(f"DROP TABLE IF EXISTS {table} CASCADE;")
-
-    applied = await run_migrations(db_pool, MIGRATIONS_DIR)
-    assert len(applied) == 8, f"Expected 8 migrations, got {len(applied)}: {applied}"
-
-    return db_pool
 
 
 class TestSchemaEndState:
