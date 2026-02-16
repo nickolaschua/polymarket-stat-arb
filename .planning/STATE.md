@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 1 of 5 (Setup + Database Layer)
-Plan: 6 plans created (01-01 through 01-06)
-Status: Ready to execute
-Last activity: 2026-02-16 - Milestone v0.1 Data Foundation created
+Plan: 1 of 6 in current phase
+Status: In progress
+Last activity: 2026-02-16 - Completed 01-01-PLAN.md
 
-Progress: ░░░░░░░░░░ 0%
+Progress: █░░░░░░░░░ 7%
 
 ## Accumulated Context
 
@@ -18,6 +18,9 @@ Progress: ░░░░░░░░░░ 0%
 - GTC limit orders, not market orders (edge from better estimates, not speed)
 - Data daemon first (prerequisite for ML training, irreplaceable data)
 - 70% rate limit safety margins (gamma_limiter, clob_read_limiter)
+- Pool state tracked via _pool_closed boolean, not asyncpg private attrs (01-01)
+- testcontainers import guarded with try/except for non-integration tests (01-01)
+- Container session-scoped, pool function-scoped for test isolation (01-01)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -27,13 +30,13 @@ Progress: ░░░░░░░░░░ 0%
 - Windows dev: asyncpg requires `WindowsSelectorEventLoopPolicy`.
 
 ### Blockers/Concerns Carried Forward
-- None (first milestone)
+- None
 
 ### Roadmap Evolution
 - Milestone v0.1 Data Foundation created: data collection pipeline, 5 phases (Phase 1-5)
 
 ## Session Continuity
 
-Last session: 2026-02-16
-Stopped at: Phase 1 planning completed, ready for execution
-Resume file: .planning/phases/01-setup-database-layer/01-01-PLAN.md
+Last session: 2026-02-16T15:26:57Z
+Stopped at: Completed 01-01-PLAN.md
+Resume file: .planning/phases/01-setup-database-layer/01-02-PLAN.md
