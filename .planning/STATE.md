@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 1 of 5 (Setup + Database Layer)
-Plan: 2 of 6 in current phase
+Plan: 3 of 6 in current phase
 Status: In progress
-Last activity: 2026-02-16 - Completed 01-02-PLAN.md
+Last activity: 2026-02-16 - Completed 01-03-PLAN.md
 
-Progress: ██░░░░░░░░ 13%
+Progress: ██░░░░░░░░ 20%
 
 ## Accumulated Context
 
@@ -23,6 +23,8 @@ Progress: ██░░░░░░░░ 13%
 - Container session-scoped, pool function-scoped for test isolation (01-01)
 - INSERT tracking row outside DDL transaction to avoid extension auto-commit issues (01-02)
 - Single connection via pool.acquire() for consistent schema_migrations reads (01-02)
+- Unique index on trades.trade_id must include ts column (TimescaleDB hypertable partitioning requirement) (01-03)
+- Continuous aggregates created before compression policies for compatibility ordering (01-03)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -39,6 +41,6 @@ Progress: ██░░░░░░░░ 13%
 
 ## Session Continuity
 
-Last session: 2026-02-16T16:06:32Z
-Stopped at: Completed 01-02-PLAN.md
-Resume file: .planning/phases/01-setup-database-layer/01-03-PLAN.md
+Last session: 2026-02-16T16:22:22Z
+Stopped at: Completed 01-03-PLAN.md
+Resume file: .planning/phases/01-setup-database-layer/01-04-PLAN.md

@@ -35,7 +35,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 Plans:
 - [x] 01-01: Infrastructure Setup (docker-compose, config, pool, test infra)
 - [x] 01-02: Migration Runner (TDD)
-- [ ] 01-03: Database Schema + Models (SQL migrations 002-008, Pydantic models)
+- [x] 01-03: Database Schema + Models (SQL migrations 002-008, Pydantic models)
 - [ ] 01-04: Market + Resolution Queries (TDD, upsert patterns)
 - [ ] 01-05: Price Snapshot Queries (TDD, COPY bulk inserts)
 - [ ] 01-06: Orderbook + Trade Queries (TDD, JSONB + integration)
@@ -90,7 +90,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
-| 1. Setup + Database Layer | v0.1 | 2/6 | In progress | - |
+| 1. Setup + Database Layer | v0.1 | 3/6 | In progress | - |
 | 2. Core Collectors | v0.1 | 0/? | Not started | - |
 | 3. WebSocket Trades + Resolution Tracker | v0.1 | 0/? | Not started | - |
 | 4. Daemon Supervisor + CLI | v0.1 | 0/? | Not started | - |
