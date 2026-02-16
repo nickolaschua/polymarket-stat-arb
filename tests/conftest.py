@@ -108,11 +108,13 @@ async def db_pool(
 # Tables created by the application (expanded as schema evolves).
 # schema_migrations is intentionally excluded to preserve migration state.
 _APPLICATION_TABLES = [
+    "price_candles_1h",
+    "trade_volume_1h",
     "price_snapshots",
     "orderbook_snapshots",
     "trades",
     "markets",
-    "market_metadata",
+    "resolutions",
 ]
 
 
