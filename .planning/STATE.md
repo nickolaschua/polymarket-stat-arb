@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 1 of 5 (Setup + Database Layer)
-Plan: 4 of 6 in current phase
+Plan: 5 of 6 in current phase
 Status: In progress
-Last activity: 2026-02-17 - Completed 01-04-PLAN.md
+Last activity: 2026-02-17 - Completed 01-05-PLAN.md
 
-Progress: ██▓░░░░░░░ 27%
+Progress: ███░░░░░░░ 33%
 
 ## Accumulated Context
 
@@ -27,6 +27,8 @@ Progress: ██▓░░░░░░░ 27%
 - Continuous aggregates created before compression policies for compatibility ordering (01-03)
 - Extracted migrated_pool fixture to shared tests/db/conftest.py for reuse across test files (01-04)
 - Batch upsert via simple loop (not executemany) since 5-min collector interval is not perf-critical (01-04)
+- COPY protocol via pool.copy_records_to_table() for price inserts (10-100x faster than executemany) (01-05)
+- _drop_with_retry() with asyncpg.DeadlockDetectedError for TimescaleDB background worker deadlocks in test fixtures (01-05)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -44,5 +46,5 @@ Progress: ██▓░░░░░░░ 27%
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Completed 01-04-PLAN.md
-Resume file: .planning/phases/01-setup-database-layer/01-05-PLAN.md
+Stopped at: Completed 01-05-PLAN.md
+Resume file: .planning/phases/01-setup-database-layer/01-06-PLAN.md

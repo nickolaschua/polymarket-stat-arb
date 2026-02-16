@@ -37,7 +37,7 @@ Plans:
 - [x] 01-02: Migration Runner (TDD)
 - [x] 01-03: Database Schema + Models (SQL migrations 002-008, Pydantic models)
 - [x] 01-04: Market + Resolution Queries (TDD, upsert patterns)
-- [ ] 01-05: Price Snapshot Queries (TDD, COPY bulk inserts)
+- [x] 01-05: Price Snapshot Queries (TDD, COPY bulk inserts)
 - [ ] 01-06: Orderbook + Trade Queries (TDD, JSONB + integration)
 
 #### Phase 2: Core Collectors
@@ -90,7 +90,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 
 | Phase | Milestone | Plans | Status | Completed |
 |-------|-----------|-------|--------|-----------|
-| 1. Setup + Database Layer | v0.1 | 4/6 | In progress | - |
+| 1. Setup + Database Layer | v0.1 | 5/6 | In progress | - |
 | 2. Core Collectors | v0.1 | 0/? | Not started | - |
 | 3. WebSocket Trades + Resolution Tracker | v0.1 | 0/? | Not started | - |
 | 4. Daemon Supervisor + CLI | v0.1 | 0/? | Not started | - |
