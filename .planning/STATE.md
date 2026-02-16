@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 2 of 5 (Core Collectors)
-Plan: 0 of 3 in current phase (planned, not started)
-Status: Phase planned — ready for execution
-Last activity: 2026-02-17 - Planned Phase 2 (3 plans)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-17 - Completed 02-01-PLAN.md
 
-Progress: ████░░░░░░ 40%
+Progress: █████░░░░░ 47%
 
 ## Accumulated Context
 
@@ -32,6 +32,7 @@ Progress: ████░░░░░░ 40%
 - executemany with $x::jsonb cast for orderbook inserts — COPY cannot encode Python dicts to JSONB (01-06)
 - Per-connection JSONB codec via set_type_codec() for dict round-trip on reads (01-06)
 - COPY protocol for trade inserts with UniqueViolationError fallback to ON CONFLICT DO NOTHING (01-06)
+- Duplicated migrated_pool fixture into tests/collector/conftest.py for pytest conftest scoping (02-01)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -49,5 +50,5 @@ Progress: ████░░░░░░ 40%
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Planned Phase 2 — 3 plans created, ready for execution
-Resume file: .planning/phases/02-core-collectors/02-01-PLAN.md
+Stopped at: Completed 02-01-PLAN.md (Market Metadata Collector)
+Resume file: .planning/phases/02-core-collectors/02-02-PLAN.md
