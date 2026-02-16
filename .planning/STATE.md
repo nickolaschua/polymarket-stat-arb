@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 1 of 5 (Setup + Database Layer)
-Plan: 1 of 6 in current phase
+Plan: 2 of 6 in current phase
 Status: In progress
-Last activity: 2026-02-16 - Completed 01-01-PLAN.md
+Last activity: 2026-02-16 - Completed 01-02-PLAN.md
 
-Progress: █░░░░░░░░░ 7%
+Progress: ██░░░░░░░░ 13%
 
 ## Accumulated Context
 
@@ -21,6 +21,8 @@ Progress: █░░░░░░░░░ 7%
 - Pool state tracked via _pool_closed boolean, not asyncpg private attrs (01-01)
 - testcontainers import guarded with try/except for non-integration tests (01-01)
 - Container session-scoped, pool function-scoped for test isolation (01-01)
+- INSERT tracking row outside DDL transaction to avoid extension auto-commit issues (01-02)
+- Single connection via pool.acquire() for consistent schema_migrations reads (01-02)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -37,6 +39,6 @@ Progress: █░░░░░░░░░ 7%
 
 ## Session Continuity
 
-Last session: 2026-02-16T15:26:57Z
-Stopped at: Completed 01-01-PLAN.md
-Resume file: .planning/phases/01-setup-database-layer/01-02-PLAN.md
+Last session: 2026-02-16T16:06:32Z
+Stopped at: Completed 01-02-PLAN.md
+Resume file: .planning/phases/01-setup-database-layer/01-03-PLAN.md
