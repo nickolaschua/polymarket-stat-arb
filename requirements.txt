@@ -38,5 +38,6 @@ rich>=13.0.0
 pytest>=7.0.0
 pytest-asyncio>=0.21.0
 testcontainers[postgres]>=4.10.0
+respx>=0.21.0
 black>=23.0.0
 ruff>=0.1.0
