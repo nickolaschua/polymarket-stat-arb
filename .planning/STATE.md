@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 3 of 5 (WebSocket Trades + Resolution Tracker)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-02-17 - Completed 03-02-PLAN.md (Resolution Tracker Collector)
+Last activity: 2026-02-17 - Completed 03-03-PLAN.md (WebSocket Trade Listener Core)
 
-Progress: ████████░░ 70%
+Progress: █████████░ 76%
 
 ## Accumulated Context
 
@@ -34,6 +34,9 @@ Progress: ████████░░ 70%
 - COPY protocol for trade inserts with UniqueViolationError fallback to ON CONFLICT DO NOTHING (01-06)
 - Duplicated migrated_pool fixture into tests/collector/conftest.py for pytest conftest scoping (02-01)
 - infer_winner never raises — returns None on any error to prevent one malformed market from crashing collection loop (03-01)
+- websockets async iterator for auto-reconnect — no hand-rolled retry logic (03-03)
+- put_nowait with drop-on-full — never block receive loop to preserve heartbeat timing (03-03)
+- trade_id=None for all WS events — WebSocket stream doesn't include trade IDs (03-03)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -51,5 +54,5 @@ Progress: ████████░░ 70%
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: 03-02 complete, ready for 03-03 (WebSocket Trade Listener Core)
+Stopped at: 03-03 complete, ready for 03-04 (Connection Pooling + Health)
 Resume file: none
