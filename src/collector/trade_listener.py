@@ -8,7 +8,8 @@ them via ``insert_trades()``.
 Usage::
 
     listener = TradeListener(pool, config)
-    # start/stop managed by daemon supervisor (Phase 4)
+    await listener.run()   # blocks until stop() is called
+    await listener.stop()  # graceful shutdown with queue flush
 
 Key design decisions:
 - ``websockets`` async iterator for auto-reconnect (no hand-rolled retry)
@@ -17,11 +18,15 @@ Key design decisions:
 - App-level ``"PING"`` every 10s (Polymarket requirement, separate from
   protocol ping/pong)
 - ``trade_id = None`` for all WS trades (not in event payload)
+- Connection pooling: tokens chunked across multiple WS connections (max 500 each)
+- Single drain loop shared across all connections
 """
 
 import asyncio
+import copy
 import json
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -30,9 +35,31 @@ from websockets.asyncio.client import connect
 from websockets.exceptions import ConnectionClosed
 
 from src.config import CollectorConfig, get_config
+from src.db.queries.markets import get_active_markets
 from src.db.queries.trades import insert_trades
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class TradeListenerHealth:
+    """Observable health state for the TradeListener.
+
+    Updated in-place by the listener's internal loops.  Access a snapshot
+    via ``TradeListener.get_health()`` which returns a shallow copy with
+    the current ``queue_depth`` populated.
+    """
+
+    trades_received: int = 0
+    trades_inserted: int = 0
+    batches_inserted: int = 0
+    connections_active: int = 0
+    reconnections: int = 0
+    queue_depth: int = 0
+    last_trade_ts: datetime | None = None
+    last_insert_ts: datetime | None = None
+    last_reconnect_ts: datetime | None = None
+    started_at: datetime | None = None
 
 
 def parse_trade_event(event: dict) -> Optional[tuple]:
@@ -108,6 +135,7 @@ class TradeListener:
         self._queue: asyncio.Queue = asyncio.Queue(maxsize=10_000)
         self._running = False
         self._tasks: list[asyncio.Task] = []
+        self.health = TradeListenerHealth()
 
     async def _subscribe(self, ws, token_ids: list[str]) -> None:
         """Send subscription message for a list of token IDs.
@@ -162,6 +190,8 @@ class TradeListener:
                 if trade is not None:
                     try:
                         self._queue.put_nowait(trade)
+                        self.health.trades_received += 1
+                        self.health.last_trade_ts = datetime.now(timezone.utc)
                     except asyncio.QueueFull:
                         logger.warning("Trade queue full, dropping event")
 
@@ -196,6 +226,9 @@ class TradeListener:
             if batch:
                 try:
                     await insert_trades(self.pool, batch)
+                    self.health.trades_inserted += len(batch)
+                    self.health.batches_inserted += 1
+                    self.health.last_insert_ts = datetime.now(timezone.utc)
                     logger.info("Inserted %d trades", len(batch))
                 except Exception:
                     logger.error(
@@ -217,8 +250,14 @@ class TradeListener:
             List of CLOB token IDs to subscribe to on this connection
             (max 500 per Polymarket limit).
         """
+        first_connect = True
         async for ws in connect(self._ws_url):
             try:
+                self.health.connections_active += 1
+                if not first_connect:
+                    self.health.reconnections += 1
+                    self.health.last_reconnect_ts = datetime.now(timezone.utc)
+                first_connect = False
                 await self._subscribe(ws, token_ids)
                 ping_task = asyncio.create_task(self._ping_loop(ws))
                 try:
@@ -229,8 +268,119 @@ class TradeListener:
                         await ping_task
                     except asyncio.CancelledError:
                         pass
+                    self.health.connections_active -= 1
             except ConnectionClosed:
+                self.health.connections_active -= 1
                 logger.warning("WebSocket disconnected, reconnecting...")
                 continue
             except asyncio.CancelledError:
+                self.health.connections_active -= 1
                 break
+
+    async def _get_active_token_ids(self) -> list[str]:
+        """Query active markets and return a deduplicated list of token IDs.
+
+        Returns
+        -------
+        list[str]
+            Flat, deduplicated list of all clob_token_ids from active markets.
+        """
+        markets = await get_active_markets(self.pool)
+        token_set: set[str] = set()
+        for market in markets:
+            for tid in market.clob_token_ids:
+                token_set.add(tid)
+        token_ids = list(token_set)
+        logger.info(
+            "Found %d unique tokens from %d active markets",
+            len(token_ids),
+            len(markets),
+        )
+        return token_ids
+
+    async def run(self) -> None:
+        """Start the trade listener with connection pooling.
+
+        Fetches active token IDs, chunks them across multiple WebSocket
+        connections (max ``ws_max_instruments_per_conn`` per connection),
+        and starts one ``_listen_single`` task per chunk plus a shared
+        ``_drain_loop`` task.  Blocks until ``stop()`` is called or all
+        tasks complete.
+        """
+        self._running = True
+        self.health.started_at = datetime.now(timezone.utc)
+
+        token_ids = await self._get_active_token_ids()
+        if not token_ids:
+            logger.warning("No active tokens found — TradeListener not starting")
+            self._running = False
+            return
+
+        chunk_size = self.config.ws_max_instruments_per_conn
+        chunks = [
+            token_ids[i : i + chunk_size]
+            for i in range(0, len(token_ids), chunk_size)
+        ]
+        logger.info(
+            "Starting %d connections for %d tokens (chunk_size=%d)",
+            len(chunks),
+            len(token_ids),
+            chunk_size,
+        )
+
+        drain_task = asyncio.create_task(self._drain_loop())
+        listener_tasks = [
+            asyncio.create_task(self._listen_single(chunk))
+            for chunk in chunks
+        ]
+        self._tasks = [drain_task] + listener_tasks
+
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+
+    async def stop(self) -> None:
+        """Gracefully stop the trade listener.
+
+        Cancels all running tasks, waits for them to finish, then
+        drains any remaining items from the queue and flushes them
+        to the database.
+        """
+        self._running = False
+
+        for task in self._tasks:
+            task.cancel()
+        await asyncio.gather(*self._tasks, return_exceptions=True)
+
+        # Drain remaining items from queue
+        remaining: list[tuple] = []
+        while not self._queue.empty():
+            try:
+                remaining.append(self._queue.get_nowait())
+            except asyncio.QueueEmpty:
+                break
+
+        if remaining:
+            try:
+                await insert_trades(self.pool, remaining)
+                logger.info("Flushed %d remaining trades on shutdown", len(remaining))
+            except Exception:
+                logger.error(
+                    "Failed to flush %d remaining trades on shutdown",
+                    len(remaining),
+                    exc_info=True,
+                )
+
+        logger.info("TradeListener stopped. Health: %s", self.health)
+
+    def get_health(self) -> TradeListenerHealth:
+        """Return a snapshot of the current health state.
+
+        Updates ``queue_depth`` before returning a copy so callers
+        always see the current queue size.
+
+        Returns
+        -------
+        TradeListenerHealth
+            A copy of the health state with ``queue_depth`` populated.
+        """
+        self.health.queue_depth = self._queue.qsize()
+        return copy.copy(self.health)
