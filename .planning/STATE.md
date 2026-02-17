@@ -2,12 +2,12 @@
 
 ## Current Position
 
-Phase: 3 of 5 (WebSocket Trades + Resolution Tracker)
-Plan: 4 of 4 in current phase
-Status: Phase complete
-Last activity: 2026-02-17 - Completed 03-04-PLAN.md (Connection Pooling + Health)
+Phase: 4 of 5 (Daemon Supervisor + CLI)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-17 - Completed 04-01-PLAN.md (Collector Daemon Core)
 
-Progress: ██████████ 81%
+Progress: ████████████░░░ 82%
 
 ## Accumulated Context
 
@@ -40,6 +40,9 @@ Progress: ██████████ 81%
 - Token list fetched once at startup — no dynamic refresh in run(), Phase 4 daemon handles restarts (03-04)
 - Single drain loop shared across all WS connections — one queue, one consumer (03-04)
 - get_health() returns shallow copy for safe external access (03-04)
+- Cross-platform signal handling: loop.add_signal_handler on Linux, signal.signal on Windows (04-01)
+- TradeListener fully recreated on crash (internal state may be corrupted) (04-01)
+- Polling collectors reuse existing instance on restart (04-01)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -57,5 +60,5 @@ Progress: ██████████ 81%
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Phase 3 complete, ready for Phase 4 (Daemon Supervisor + CLI)
+Stopped at: Completed 04-01-PLAN.md (Collector Daemon Core)
 Resume file: none
