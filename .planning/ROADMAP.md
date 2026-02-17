@@ -63,7 +63,7 @@ Plans:
 
 Plans:
 - [x] 03-01: Resolution Winner Inference (TDD, infer_winner with edge cases)
-- [ ] 03-02: Resolution Tracker Collector (Gamma API polling, respx tests)
+- [x] 03-02: Resolution Tracker Collector (Gamma API polling, respx tests)
 - [ ] 03-03: WebSocket Trade Listener Core (parse events, single-connection, queue, drain)
 - [ ] 03-04: Connection Pooling + Health (multi-connection, run/stop lifecycle, health state)
 
@@ -97,6 +97,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|-----------|-------|--------|-----------|
 | 1. Setup + Database Layer | v0.1 | 6/6 | Complete | 2026-02-17 |
 | 2. Core Collectors | v0.1 | 3/3 | Complete | 2026-02-17 |
-| 3. WebSocket Trades + Resolution Tracker | v0.1 | 1/4 | In progress | - |
+| 3. WebSocket Trades + Resolution Tracker | v0.1 | 2/4 | In progress | - |
 | 4. Daemon Supervisor + CLI | v0.1 | 0/? | Not started | - |
 | 5. Hetzner Deployment | v0.1 | 0/? | Not started | - |
