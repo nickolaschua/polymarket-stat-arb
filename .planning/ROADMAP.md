@@ -72,10 +72,12 @@ Plans:
 **Goal**: Task orchestrator managing all 5 collectors as asyncio tasks, graceful shutdown on SIGINT/SIGTERM, crash recovery (restart failed tasks), health status logging. `collect` CLI command integration. End-to-end local test with Docker TimescaleDB.
 **Depends on**: Phase 3
 **Research**: Unlikely (internal asyncio task management, Click CLI, signal handling — patterns exist in heartbeat.py)
-**Plans**: TBD
+**Plans**: 3 plans (comprehensive depth)
 
 Plans:
-- [ ] 04-01: TBD (run /gsd:plan-phase 4 to break down)
+- [ ] 04-01: Collector Daemon Core (orchestrator class, run/stop, signal handling, crash recovery)
+- [ ] 04-02: Health Logging + CLI (periodic health stats, `collect` CLI command)
+- [ ] 04-03: Daemon Tests (lifecycle, crash recovery, health logging unit tests)
 
 #### Phase 5: Hetzner Deployment
 
