@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 3 of 5 (WebSocket Trades + Resolution Tracker)
-Plan: 0 of 4 in current phase
-Status: Planned, ready for execution
-Last activity: 2026-02-17 - Created 03-01 through 03-04 PLAN.md files
+Plan: 1 of 4 in current phase
+Status: In progress
+Last activity: 2026-02-17 - Completed 03-01-PLAN.md
 
-Progress: ███████░░░ 60%
+Progress: ████████░░ 65%
 
 ## Accumulated Context
 
@@ -33,6 +33,7 @@ Progress: ███████░░░ 60%
 - Per-connection JSONB codec via set_type_codec() for dict round-trip on reads (01-06)
 - COPY protocol for trade inserts with UniqueViolationError fallback to ON CONFLICT DO NOTHING (01-06)
 - Duplicated migrated_pool fixture into tests/collector/conftest.py for pytest conftest scoping (02-01)
+- infer_winner never raises — returns None on any error to prevent one malformed market from crashing collection loop (03-01)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -50,5 +51,5 @@ Progress: ███████░░░ 60%
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: Phase 3 plans created (03-01 through 03-04)
-Resume file: .planning/phases/03-websocket-trades/03-01-PLAN.md
+Stopped at: Completed 03-01-PLAN.md
+Resume file: .planning/phases/03-websocket-trades/03-02-PLAN.md
