@@ -1,14 +1,19 @@
-"""Tests for resolution winner inference.
+"""Tests for resolution winner inference and ResolutionTracker collector.
 
 Unit tests verify infer_winner() logic without DB or HTTP.
-The function takes raw Gamma API market dicts and returns
-resolution_data dicts suitable for upsert_resolution(), or None
-if the market is not resolved.
+Integration tests use respx to mock the Gamma API and migrated_pool
+for real database writes via ResolutionTracker.collect_once().
 """
 
 from datetime import datetime, timezone
 
-from src.collector.resolution_tracker import infer_winner
+import httpx
+import respx
+
+from src.collector.resolution_tracker import ResolutionTracker, infer_winner
+from src.config import CollectorConfig
+from src.db.queries.markets import get_market, upsert_market
+from src.db.queries.resolutions import get_resolution, upsert_resolution
 
 
 # ---------------------------------------------------------------------------
@@ -244,3 +249,258 @@ class TestInferWinnerEdgeCases:
 
         assert result is not None
         assert before <= result["resolved_at"] <= after
+
+
+# ---------------------------------------------------------------------------
+# Integration test helpers
+# ---------------------------------------------------------------------------
+
+GAMMA_EVENTS_URL = "https://gamma-api.polymarket.com/events"
+
+
+def _make_event(markets: list[dict], event_id: str = "evt_1") -> dict:
+    """Wrap market dicts in an event structure."""
+    return {"id": event_id, "markets": markets}
+
+
+def _tracker(pool) -> ResolutionTracker:
+    """Create a ResolutionTracker with default config."""
+    return ResolutionTracker(pool=pool, config=CollectorConfig())
+
+
+# =========================================================================
+# Integration tests — ResolutionTracker.collect_once()
+# =========================================================================
+
+
+class TestResolutionTrackerCollectOnce:
+    """Integration tests for ResolutionTracker using respx + migrated_pool."""
+
+    @respx.mock
+    async def test_collect_once_detects_resolution(
+        self, migrated_pool,
+    ) -> None:
+        """Resolved market (outcomePrices '["1","0"]') -> upserted to DB."""
+        events = [
+            _make_event([
+                _make_raw_market(
+                    condition_id="0xresolved_1",
+                    outcome_prices='["1","0"]',
+                    outcomes='["Yes","No"]',
+                    clob_token_ids='["tok_yes","tok_no"]',
+                ),
+            ]),
+        ]
+
+        respx.get(GAMMA_EVENTS_URL).mock(
+            return_value=httpx.Response(200, json=events),
+        )
+
+        # Pre-insert the market so that closed sync has something to update
+        await upsert_market(migrated_pool, {
+            "condition_id": "0xresolved_1",
+            "question": "Will it resolve?",
+            "outcomes": ["Yes", "No"],
+            "clob_token_ids": ["tok_yes", "tok_no"],
+            "active": True,
+            "closed": False,
+        })
+
+        tracker = _tracker(migrated_pool)
+        try:
+            count = await tracker.collect_once()
+        finally:
+            await tracker.close()
+
+        assert count == 1
+
+        # Verify resolution persisted
+        res = await get_resolution(migrated_pool, "0xresolved_1")
+        assert res is not None
+        assert res.outcome == "Yes"
+        assert res.winner_token_id == "tok_yes"
+        assert res.payout_price == 1.0
+        assert res.detection_method == "gamma_api_polling"
+
+        # Verify market.closed synced to true
+        market = await get_market(migrated_pool, "0xresolved_1")
+        assert market is not None
+        assert market.closed is True
+
+    @respx.mock
+    async def test_collect_once_skips_unresolved(
+        self, migrated_pool,
+    ) -> None:
+        """Unresolved market (outcomePrices '["0.95","0.05"]') -> no resolution."""
+        events = [
+            _make_event([
+                _make_raw_market(
+                    condition_id="0xunresolved_1",
+                    outcome_prices='["0.95","0.05"]',
+                ),
+            ]),
+        ]
+
+        respx.get(GAMMA_EVENTS_URL).mock(
+            return_value=httpx.Response(200, json=events),
+        )
+
+        tracker = _tracker(migrated_pool)
+        try:
+            count = await tracker.collect_once()
+        finally:
+            await tracker.close()
+
+        assert count == 0
+
+        res = await get_resolution(migrated_pool, "0xunresolved_1")
+        assert res is None
+
+    @respx.mock
+    async def test_collect_once_skips_already_resolved(
+        self, migrated_pool,
+    ) -> None:
+        """Pre-existing resolution -> not re-upserted (count stays 0)."""
+        # Pre-insert a resolution
+        await upsert_resolution(migrated_pool, {
+            "condition_id": "0xalready_done",
+            "outcome": "Yes",
+            "winner_token_id": "tok_yes",
+            "payout_price": 1.0,
+            "detection_method": "gamma_api_polling",
+            "resolved_at": datetime.now(timezone.utc),
+        })
+
+        events = [
+            _make_event([
+                _make_raw_market(
+                    condition_id="0xalready_done",
+                    outcome_prices='["1","0"]',
+                ),
+            ]),
+        ]
+
+        respx.get(GAMMA_EVENTS_URL).mock(
+            return_value=httpx.Response(200, json=events),
+        )
+
+        tracker = _tracker(migrated_pool)
+        try:
+            count = await tracker.collect_once()
+        finally:
+            await tracker.close()
+
+        assert count == 0
+
+    @respx.mock
+    async def test_collect_once_paginates(
+        self, migrated_pool,
+    ) -> None:
+        """Multiple pages of closed events are all processed."""
+        # Page 1: exactly 100 events (triggers next page)
+        page_1_events = [
+            _make_event(
+                [_make_raw_market(
+                    condition_id=f"0xpg1_{i}",
+                    outcome_prices='["0.6","0.4"]',  # unresolved
+                )],
+                event_id=f"evt_p1_{i}",
+            )
+            for i in range(100)
+        ]
+
+        # Page 2: 50 events (< 100, stops pagination)
+        page_2_events = [
+            _make_event(
+                [_make_raw_market(
+                    condition_id=f"0xpg2_{i}",
+                    outcome_prices='["0.6","0.4"]',  # unresolved
+                )],
+                event_id=f"evt_p2_{i}",
+            )
+            for i in range(50)
+        ]
+
+        call_count = 0
+
+        def gamma_side_effect(request):
+            nonlocal call_count
+            call_count += 1
+            offset = int(request.url.params.get("offset", 0))
+            if offset == 0:
+                return httpx.Response(200, json=page_1_events)
+            elif offset == 100:
+                return httpx.Response(200, json=page_2_events)
+            else:
+                return httpx.Response(200, json=[])
+
+        respx.get(GAMMA_EVENTS_URL).mock(side_effect=gamma_side_effect)
+
+        tracker = _tracker(migrated_pool)
+        try:
+            count = await tracker.collect_once()
+        finally:
+            await tracker.close()
+
+        # None resolved, but both pages fetched
+        assert count == 0
+        # Should have made exactly 2 API calls (page 1 + page 2, page 2 < limit)
+        assert call_count == 2
+
+    @respx.mock
+    async def test_collect_once_api_error_returns_zero(
+        self, migrated_pool,
+    ) -> None:
+        """Gamma API 500 error -> returns 0, no exception raised."""
+        respx.get(GAMMA_EVENTS_URL).mock(
+            return_value=httpx.Response(500),
+        )
+
+        tracker = _tracker(migrated_pool)
+        try:
+            count = await tracker.collect_once()
+        finally:
+            await tracker.close()
+
+        assert count == 0
+
+    @respx.mock
+    async def test_collect_once_updates_market_closed(
+        self, migrated_pool,
+    ) -> None:
+        """Closed event syncs market.closed = true even if not resolved."""
+        # Pre-insert market with closed=false
+        await upsert_market(migrated_pool, {
+            "condition_id": "0xclose_sync",
+            "question": "Close sync test?",
+            "outcomes": ["Yes", "No"],
+            "clob_token_ids": ["tok_a", "tok_b"],
+            "active": True,
+            "closed": False,
+        })
+
+        events = [
+            _make_event([
+                _make_raw_market(
+                    condition_id="0xclose_sync",
+                    outcome_prices='["0.7","0.3"]',  # NOT resolved
+                ),
+            ]),
+        ]
+
+        respx.get(GAMMA_EVENTS_URL).mock(
+            return_value=httpx.Response(200, json=events),
+        )
+
+        tracker = _tracker(migrated_pool)
+        try:
+            count = await tracker.collect_once()
+        finally:
+            await tracker.close()
+
+        assert count == 0  # not resolved
+
+        # But market.closed should now be true
+        market = await get_market(migrated_pool, "0xclose_sync")
+        assert market is not None
+        assert market.closed is True
