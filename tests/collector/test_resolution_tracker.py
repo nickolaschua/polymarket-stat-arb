@@ -8,8 +8,6 @@ if the market is not resolved.
 
 from datetime import datetime, timezone
 
-import pytest
-
 from src.collector.resolution_tracker import infer_winner
 
 
