@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 3 of 5 (WebSocket Trades + Resolution Tracker)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-02-17 - Completed 03-03-PLAN.md (WebSocket Trade Listener Core)
+Plan: 4 of 4 in current phase
+Status: Phase complete
+Last activity: 2026-02-17 - Completed 03-04-PLAN.md (Connection Pooling + Health)
 
-Progress: █████████░ 76%
+Progress: ██████████ 81%
 
 ## Accumulated Context
 
@@ -37,6 +37,9 @@ Progress: █████████░ 76%
 - websockets async iterator for auto-reconnect — no hand-rolled retry logic (03-03)
 - put_nowait with drop-on-full — never block receive loop to preserve heartbeat timing (03-03)
 - trade_id=None for all WS events — WebSocket stream doesn't include trade IDs (03-03)
+- Token list fetched once at startup — no dynamic refresh in run(), Phase 4 daemon handles restarts (03-04)
+- Single drain loop shared across all WS connections — one queue, one consumer (03-04)
+- get_health() returns shallow copy for safe external access (03-04)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -54,5 +57,5 @@ Progress: █████████░ 76%
 ## Session Continuity
 
 Last session: 2026-02-17
-Stopped at: 03-03 complete, ready for 03-04 (Connection Pooling + Health)
+Stopped at: Phase 3 complete, ready for Phase 4 (Daemon Supervisor + CLI)
 Resume file: none
