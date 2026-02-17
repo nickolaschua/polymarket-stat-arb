@@ -77,6 +77,9 @@ class CollectorConfig(BaseModel):
     resolution_check_interval_sec: int = 300
     trade_buffer_size: int = 1000
     max_markets: int = 10000
+    ws_ping_interval_sec: int = 10
+    ws_max_instruments_per_conn: int = 500
+    trade_batch_drain_timeout_sec: float = 5.0
 
 
 class TelegramConfig(BaseModel):
