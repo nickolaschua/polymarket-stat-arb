@@ -67,6 +67,23 @@ class CollectorDaemon:
         self._tasks: dict[str, asyncio.Task] = {}
         self._shutdown_event = asyncio.Event()
 
+        # Crash recovery state
+        self._restart_counts: dict[str, int] = {}
+        self._max_restarts: int = 5
+        self._base_restart_delay: float = 5.0
+        self._max_restart_delay: float = 60.0
+
+        # Store collector-interval mapping for restart (populated in run())
+        self._polling_collectors: dict[str, tuple[object, int]] = {
+            "metadata": (self._metadata, config.metadata_interval_sec),
+            "prices": (self._prices, config.price_interval_sec),
+            "orderbooks": (self._orderbooks, config.orderbook_interval_sec),
+            "resolutions": (
+                self._resolutions,
+                config.resolution_check_interval_sec,
+            ),
+        }
+
     async def _run_polling_loop(
         self, name: str, collector: object, interval_sec: int
     ) -> None:
@@ -96,6 +113,79 @@ class CollectorDaemon:
                     "%s: collection error", name, exc_info=True
                 )
             await asyncio.sleep(interval_sec)
+
+    async def _monitor_tasks(self) -> None:
+        """Monitor running tasks and restart crashed ones.
+
+        Runs every 10 seconds, checking for tasks that have finished
+        unexpectedly (done but not cancelled).  Crashed tasks are
+        restarted with exponential backoff (5s -> 10s -> 20s -> 40s ->
+        60s cap), up to ``_max_restarts`` times per collector.
+
+        The TradeListener is fully recreated on crash because its
+        internal state (queue, health, tasks) may be corrupted.
+        Polling collectors reuse the existing collector instance.
+        """
+        while self._running:
+            await asyncio.sleep(10)
+            for name in list(self._tasks.keys()):
+                if name == "_monitor":
+                    continue
+                task = self._tasks[name]
+                if not task.done() or task.cancelled():
+                    continue
+
+                # Task finished unexpectedly
+                try:
+                    exc = task.exception()
+                except (asyncio.CancelledError, asyncio.InvalidStateError):
+                    continue
+
+                logger.error("Task '%s' crashed: %s", name, exc)
+
+                count = self._restart_counts.get(name, 0)
+                if count >= self._max_restarts:
+                    logger.critical(
+                        "Task '%s' exceeded max restarts (%d), giving up",
+                        name,
+                        self._max_restarts,
+                    )
+                    continue
+
+                delay = min(
+                    self._base_restart_delay * (2 ** count),
+                    self._max_restart_delay,
+                )
+                logger.warning(
+                    "Restarting '%s' in %.0fs (attempt %d/%d)",
+                    name,
+                    delay,
+                    count + 1,
+                    self._max_restarts,
+                )
+                await asyncio.sleep(delay)
+
+                # May have shut down during the delay
+                if not self._running:
+                    return
+
+                # Recreate the task
+                if name == "trades":
+                    # Recreate TradeListener — internal state may be
+                    # corrupted after crash
+                    self._trade_listener = TradeListener(
+                        self.pool, self.config
+                    )
+                    self._tasks[name] = asyncio.create_task(
+                        self._trade_listener.run()
+                    )
+                elif name in self._polling_collectors:
+                    collector, interval = self._polling_collectors[name]
+                    self._tasks[name] = asyncio.create_task(
+                        self._run_polling_loop(name, collector, interval)
+                    )
+
+                self._restart_counts[name] = count + 1
 
     async def run(self) -> None:
         """Start all collectors and block until shutdown signal.
@@ -152,6 +242,9 @@ class CollectorDaemon:
             self._trade_listener.run()
         )
 
+        # Start crash-recovery monitor
+        self._tasks["_monitor"] = asyncio.create_task(self._monitor_tasks())
+
         logger.info("Daemon started with %d tasks", len(self._tasks))
 
         # Block until shutdown signal
@@ -170,8 +263,10 @@ class CollectorDaemon:
         self._running = False
         logger.info("Daemon shutting down...")
 
-        # Cancel polling tasks (metadata, prices, orderbooks, resolutions)
-        for name in ("metadata", "prices", "orderbooks", "resolutions"):
+        # Cancel polling tasks and monitor
+        for name in (
+            "metadata", "prices", "orderbooks", "resolutions", "_monitor"
+        ):
             task = self._tasks.get(name)
             if task and not task.done():
                 task.cancel()
