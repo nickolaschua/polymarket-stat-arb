@@ -77,7 +77,7 @@ Plans:
 Plans:
 - [x] 04-01: Collector Daemon Core (orchestrator class, run/stop, signal handling, crash recovery)
 - [x] 04-02: Health Logging + CLI (periodic health stats, `collect` CLI command)
-- [ ] 04-03: Daemon Tests (lifecycle, crash recovery, health logging unit tests)
+- [x] 04-03: Daemon Tests (lifecycle, crash recovery, health logging unit tests)
 
 #### Phase 5: Hetzner Deployment
 
@@ -100,5 +100,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 1. Setup + Database Layer | v0.1 | 6/6 | Complete | 2026-02-17 |
 | 2. Core Collectors | v0.1 | 3/3 | Complete | 2026-02-17 |
 | 3. WebSocket Trades + Resolution Tracker | v0.1 | 4/4 | Complete | 2026-02-17 |
-| 4. Daemon Supervisor + CLI | v0.1 | 2/3 | In progress | - |
+| 4. Daemon Supervisor + CLI | v0.1 | 3/3 | Complete | 2026-02-18 |
 | 5. Hetzner Deployment | v0.1 | 0/? | Not started | - |
