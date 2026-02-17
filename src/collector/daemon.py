@@ -15,9 +15,11 @@ Usage::
 """
 
 import asyncio
+import copy
 import logging
 import signal
 import sys
+from datetime import datetime, timezone
 
 import asyncpg
 
@@ -84,6 +86,18 @@ class CollectorDaemon:
             ),
         }
 
+        # Health tracking
+        self._started_at: datetime | None = None
+        self._collector_stats: dict[str, dict] = {
+            name: {
+                "last_collect_ts": None,
+                "total_items": 0,
+                "error_count": 0,
+                "last_error": None,
+            }
+            for name in self._polling_collectors
+        }
+
     async def _run_polling_loop(
         self, name: str, collector: object, interval_sec: int
     ) -> None:
@@ -106,12 +120,20 @@ class CollectorDaemon:
             try:
                 count = await collector.collect_once()
                 logger.debug("%s: collected %d items", name, count)
+                if name in self._collector_stats:
+                    self._collector_stats[name]["last_collect_ts"] = (
+                        datetime.now(timezone.utc)
+                    )
+                    self._collector_stats[name]["total_items"] += count
             except asyncio.CancelledError:
                 return
-            except Exception:
+            except Exception as exc:
                 logger.error(
                     "%s: collection error", name, exc_info=True
                 )
+                if name in self._collector_stats:
+                    self._collector_stats[name]["error_count"] += 1
+                    self._collector_stats[name]["last_error"] = str(exc)
             await asyncio.sleep(interval_sec)
 
     async def _monitor_tasks(self) -> None:
@@ -187,6 +209,111 @@ class CollectorDaemon:
 
                 self._restart_counts[name] = count + 1
 
+    @staticmethod
+    def _format_uptime(seconds: float) -> str:
+        """Format seconds into a human-readable uptime string.
+
+        Returns ``Xh Ym`` for uptimes >= 1 hour, or ``Ym Zs`` for
+        shorter durations.
+        """
+        total_sec = int(seconds)
+        hours, remainder = divmod(total_sec, 3600)
+        minutes, secs = divmod(remainder, 60)
+        if hours > 0:
+            return f"{hours}h {minutes}m"
+        return f"{minutes}m {secs}s"
+
+    async def _health_log_loop(self) -> None:
+        """Log daemon health summary every 60 seconds.
+
+        Reports task status, restart counts, per-collector item/error
+        stats, and TradeListener health.  Non-critical — not restarted
+        on crash.
+        """
+        try:
+            while self._running:
+                await asyncio.sleep(60)
+
+                # Uptime
+                if self._started_at is not None:
+                    uptime_sec = (
+                        datetime.now(timezone.utc) - self._started_at
+                    ).total_seconds()
+                    uptime_str = self._format_uptime(uptime_sec)
+                else:
+                    uptime_str = "unknown"
+
+                # Task status
+                alive = sum(
+                    1 for t in self._tasks.values() if not t.done()
+                )
+                dead = sum(
+                    1 for t in self._tasks.values() if t.done()
+                )
+                total_restarts = sum(self._restart_counts.values())
+
+                logger.info(
+                    "=== Daemon Health === uptime: %s | tasks: %d alive,"
+                    " %d dead | restarts: %d",
+                    uptime_str,
+                    alive,
+                    dead,
+                    total_restarts,
+                )
+
+                # Per-collector stats
+                for name, stats in self._collector_stats.items():
+                    logger.info(
+                        "  %s: items=%d errors=%d last=%s",
+                        name,
+                        stats["total_items"],
+                        stats["error_count"],
+                        stats["last_collect_ts"],
+                    )
+
+                # TradeListener health
+                health = self._trade_listener.get_health()
+                logger.info(
+                    "  trades: received=%d inserted=%d conns=%d queue=%d",
+                    health.trades_received,
+                    health.trades_inserted,
+                    health.connections_active,
+                    health.queue_depth,
+                )
+        except asyncio.CancelledError:
+            return
+
+    def get_health(self) -> dict:
+        """Return a summary dict of all collector health states.
+
+        Intended for programmatic health checks and future monitoring
+        integrations.
+
+        Returns
+        -------
+        dict
+            Keys: ``uptime_seconds``, ``tasks_alive``, ``tasks_dead``,
+            ``total_restarts``, ``collectors``, ``trade_listener``.
+        """
+        if self._started_at is not None:
+            uptime_seconds = (
+                datetime.now(timezone.utc) - self._started_at
+            ).total_seconds()
+        else:
+            uptime_seconds = 0.0
+
+        alive = sum(1 for t in self._tasks.values() if not t.done())
+        dead = sum(1 for t in self._tasks.values() if t.done())
+
+        return {
+            "uptime_seconds": uptime_seconds,
+            "tasks_alive": alive,
+            "tasks_dead": dead,
+            "total_restarts": sum(self._restart_counts.values()),
+            "collectors": copy.deepcopy(self._collector_stats),
+            "trade_listener": self._trade_listener.get_health(),
+        }
+
     async def run(self) -> None:
         """Start all collectors and block until shutdown signal.
 
@@ -200,6 +327,7 @@ class CollectorDaemon:
         shutdown.
         """
         self._running = True
+        self._started_at = datetime.now(timezone.utc)
         loop = asyncio.get_running_loop()
 
         # Register signal handlers for graceful shutdown
@@ -245,6 +373,9 @@ class CollectorDaemon:
         # Start crash-recovery monitor
         self._tasks["_monitor"] = asyncio.create_task(self._monitor_tasks())
 
+        # Start health logger (non-critical — not restarted on crash)
+        self._tasks["_health"] = asyncio.create_task(self._health_log_loop())
+
         logger.info("Daemon started with %d tasks", len(self._tasks))
 
         # Block until shutdown signal
@@ -263,9 +394,10 @@ class CollectorDaemon:
         self._running = False
         logger.info("Daemon shutting down...")
 
-        # Cancel polling tasks and monitor
+        # Cancel polling tasks, monitor, and health logger
         for name in (
-            "metadata", "prices", "orderbooks", "resolutions", "_monitor"
+            "metadata", "prices", "orderbooks", "resolutions",
+            "_monitor", "_health",
         ):
             task = self._tasks.get(name)
             if task and not task.done():
