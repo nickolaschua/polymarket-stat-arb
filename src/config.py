@@ -74,6 +74,7 @@ class CollectorConfig(BaseModel):
     price_interval_sec: int = 60
     orderbook_interval_sec: int = 300
     metadata_interval_sec: int = 300
+    resolution_check_interval_sec: int = 300
     trade_buffer_size: int = 1000
     max_markets: int = 10000
 
