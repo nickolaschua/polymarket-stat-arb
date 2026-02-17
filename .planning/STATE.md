@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 4 of 5 (Daemon Supervisor + CLI)
-Plan: 1 of 3 in current phase
+Plan: 2 of 3 in current phase
 Status: In progress
-Last activity: 2026-02-17 - Completed 04-01-PLAN.md (Collector Daemon Core)
+Last activity: 2026-02-18 - Completed 04-02-PLAN.md (Health Logging + CLI)
 
-Progress: ████████████░░░ 82%
+Progress: █████████████░░ 88%
 
 ## Accumulated Context
 
@@ -43,6 +43,9 @@ Progress: ████████████░░░ 82%
 - Cross-platform signal handling: loop.add_signal_handler on Linux, signal.signal on Windows (04-01)
 - TradeListener fully recreated on crash (internal state may be corrupted) (04-01)
 - Polling collectors reuse existing instance on restart (04-01)
+- Health logger is non-critical: not restarted on crash (04-02)
+- get_health() uses copy.deepcopy for collector_stats to prevent mutation (04-02)
+- collect CLI command uses lazy imports to avoid circular deps (04-02)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -59,6 +62,6 @@ Progress: ████████████░░░ 82%
 
 ## Session Continuity
 
-Last session: 2026-02-17
-Stopped at: Completed 04-01-PLAN.md (Collector Daemon Core)
+Last session: 2026-02-18
+Stopped at: Completed 04-02-PLAN.md (Health Logging + CLI)
 Resume file: none
