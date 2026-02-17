@@ -153,6 +153,41 @@ def check(ctx):
 
 
 @cli.command()
+@click.pass_context
+def collect(ctx):
+    """Start the data collection daemon (runs all collectors 24/7)."""
+
+    async def run_daemon():
+        from pathlib import Path
+        from src.db.pool import get_pool, close_pool
+        from src.db.migrations.runner import run_migrations
+        from src.collector.daemon import CollectorDaemon
+
+        config = get_config()
+
+        logger.info("Starting collector daemon...")
+
+        # Initialize database
+        pool = await get_pool()
+        migrations_dir = Path(__file__).resolve().parent / "db" / "migrations"
+        applied = await run_migrations(pool, migrations_dir)
+        if applied:
+            logger.info("Applied %d migrations", len(applied))
+
+        # Create client and daemon
+        client = PolymarketClient(config)
+        daemon = CollectorDaemon(pool, client, config.collector)
+
+        try:
+            await daemon.run()
+        finally:
+            await close_pool()
+            logger.info("Collector daemon shut down")
+
+    asyncio.run(run_daemon())
+
+
+@cli.command()
 @click.argument("token_id")
 @click.pass_context
 def price(ctx, token_id: str):
