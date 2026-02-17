@@ -59,10 +59,13 @@ Plans:
 **Research**: Likely (new WebSocket integration — Polymarket trade stream API)
 **Research topics**: Polymarket WebSocket API trade stream format, subscription management, reconnection patterns
 **Research method**: External agent handoff (geoblocked — local IP cannot access Polymarket APIs). Write RESEARCH-REQUEST.md, wait for external agent to produce response.
-**Plans**: TBD
+**Plans**: 4 plans (comprehensive depth)
 
 Plans:
-- [ ] 03-01: TBD (run /gsd:plan-phase 3 to break down)
+- [ ] 03-01: Resolution Winner Inference (TDD, infer_winner with edge cases)
+- [ ] 03-02: Resolution Tracker Collector (Gamma API polling, respx tests)
+- [ ] 03-03: WebSocket Trade Listener Core (parse events, single-connection, queue, drain)
+- [ ] 03-04: Connection Pooling + Health (multi-connection, run/stop lifecycle, health state)
 
 #### Phase 4: Daemon Supervisor + CLI
 
@@ -94,6 +97,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 |-------|-----------|-------|--------|-----------|
 | 1. Setup + Database Layer | v0.1 | 6/6 | Complete | 2026-02-17 |
 | 2. Core Collectors | v0.1 | 3/3 | Complete | 2026-02-17 |
-| 3. WebSocket Trades + Resolution Tracker | v0.1 | 0/? | Not started | - |
+| 3. WebSocket Trades + Resolution Tracker | v0.1 | 0/4 | Planned | - |
 | 4. Daemon Supervisor + CLI | v0.1 | 0/? | Not started | - |
 | 5. Hetzner Deployment | v0.1 | 0/? | Not started | - |
