@@ -38,15 +38,33 @@ echo ""
 echo "[1/9] Installing system dependencies..."
 apt-get update -qq
 apt-get install -y -qq \
-    docker.io \
-    docker-compose-plugin \
     python3 \
     python3-venv \
     python3-pip \
     git \
     age \
     curl \
+    ca-certificates \
+    gnupg \
     > /dev/null
+
+# Install Docker from official repository (needed for docker-compose-plugin)
+if ! command -v docker &>/dev/null; then
+    echo "  -> Setting up Docker official repository..."
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+    apt-get update -qq
+    apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin > /dev/null
+    echo "  -> Docker installed from official repository"
+else
+    echo "  -> Docker already installed"
+    # Ensure docker-compose-plugin is available
+    if ! docker compose version &>/dev/null; then
+        apt-get install -y -qq docker-compose-plugin > /dev/null
+    fi
+fi
 
 # Enable and start Docker
 systemctl enable docker
