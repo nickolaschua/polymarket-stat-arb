@@ -148,7 +148,9 @@ class OrderbookSnapshotCollector:
         Never raises -- errors are logged so the daemon loop continues.
         """
         try:
-            markets = await get_active_markets(self.pool)
+            markets = await get_active_markets(
+                self.pool, limit=self.config.max_markets
+            )
 
             # Flatten all token IDs from active markets
             all_token_ids: list[str] = []

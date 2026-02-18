@@ -73,11 +73,21 @@ async def get_market(
     return record_to_model(row, MarketRecord)
 
 
-async def get_active_markets(pool: asyncpg.Pool) -> list[MarketRecord]:
-    """Fetch all markets where active = true, ordered by created_at DESC."""
-    rows = await pool.fetch(
-        "SELECT * FROM markets WHERE active = true ORDER BY created_at DESC"
-    )
+async def get_active_markets(
+    pool: asyncpg.Pool, limit: int | None = None
+) -> list[MarketRecord]:
+    """Fetch active markets, ordered by created_at DESC.
+
+    Parameters
+    ----------
+    limit:
+        Maximum number of markets to return.  ``None`` = no limit.
+        Pass ``config.collector.max_markets`` to cap memory/API usage.
+    """
+    query = "SELECT * FROM markets WHERE active = true ORDER BY created_at DESC"
+    if limit is not None:
+        query += f" LIMIT {int(limit)}"
+    rows = await pool.fetch(query)
     return [record_to_model(row, MarketRecord) for row in rows]
 
 

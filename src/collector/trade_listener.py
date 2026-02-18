@@ -285,7 +285,9 @@ class TradeListener:
         list[str]
             Flat, deduplicated list of all clob_token_ids from active markets.
         """
-        markets = await get_active_markets(self.pool)
+        markets = await get_active_markets(
+            self.pool, limit=self.config.max_markets
+        )
         token_set: set[str] = set()
         for market in markets:
             for tid in market.clob_token_ids:
