@@ -77,13 +77,17 @@ class OrderbookSnapshotCollector:
         tuple
             ``(ts, token_id, bids_dict, asks_dict, spread, midpoint)``
         """
+        raw_bids = book.bids if hasattr(book, "bids") else book.get("bids", [])
+        raw_asks = book.asks if hasattr(book, "asks") else book.get("asks", [])
         bids = [
-            [float(level["price"]), float(level["size"])]
-            for level in book.get("bids", [])
+            [float(level.price if hasattr(level, "price") else level["price"]),
+             float(level.size if hasattr(level, "size") else level["size"])]
+            for level in (raw_bids or [])
         ]
         asks = [
-            [float(level["price"]), float(level["size"])]
-            for level in book.get("asks", [])
+            [float(level.price if hasattr(level, "price") else level["price"]),
+             float(level.size if hasattr(level, "size") else level["size"])]
+            for level in (raw_asks or [])
         ]
 
         bids_dict = {"levels": bids}
