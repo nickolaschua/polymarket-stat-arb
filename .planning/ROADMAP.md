@@ -88,7 +88,7 @@ Plans:
 **Plans**: 2 plans (comprehensive depth)
 
 Plans:
-- [ ] 05-01: Production Deployment Artifacts (docker-compose.prod.yml, systemd, deploy.sh, age encryption, config)
+- [x] 05-01: Production Deployment Artifacts (docker-compose.prod.yml, systemd, deploy.sh, age encryption, config)
 - [ ] 05-02: Server Provisioning + Deployment + Smoke Test (Hetzner CPX31, deploy, verify data)
 
 ## Progress
@@ -102,4 +102,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5
 | 2. Core Collectors | v0.1 | 3/3 | Complete | 2026-02-17 |
 | 3. WebSocket Trades + Resolution Tracker | v0.1 | 4/4 | Complete | 2026-02-17 |
 | 4. Daemon Supervisor + CLI | v0.1 | 3/3 | Complete | 2026-02-18 |
-| 5. Hetzner Deployment | v0.1 | 0/2 | In progress | - |
+| 5. Hetzner Deployment | v0.1 | 1/2 | In progress | - |

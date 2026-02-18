@@ -2,10 +2,10 @@
 
 ## Current Position
 
-Phase: 4 of 5 (Daemon Supervisor + CLI)
-Plan: 3 of 3 in current phase
-Status: Phase complete
-Last activity: 2026-02-18 - Completed 04-03-PLAN.md (Daemon Tests)
+Phase: 5 of 5 (Hetzner Deployment)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-02-18 - Completed 05-01-PLAN.md (Production Deployment Artifacts)
 
 Progress: ██████████████░ 94%
 
@@ -47,6 +47,10 @@ Progress: ██████████████░ 94%
 - get_health() uses copy.deepcopy for collector_stats to prevent mutation (04-02)
 - collect CLI command uses lazy imports to avoid circular deps (04-02)
 - TradeListener mock uses side_effect for distinct instances in re-instantiation tests (04-03)
+- start-collector.sh wrapper: source env + decrypt age key + exec Python so systemd tracks PID directly (05-01)
+- age encryption over GPG for wallet key: simpler single-binary tool (05-01)
+- Docker localhost-only binding (127.0.0.1:5432) for production — never exposed to internet (05-01)
+- Idempotent deploy.sh: checks at every step before creating/cloning/installing (05-01)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -64,5 +68,5 @@ Progress: ██████████████░ 94%
 ## Session Continuity
 
 Last session: 2026-02-18
-Stopped at: Completed 04-03-PLAN.md (Daemon Tests) — Phase 4 complete
+Stopped at: Completed 05-01-PLAN.md (Production Deployment Artifacts)
 Resume file: none
