@@ -1,0 +1,84 @@
+# Polymarket Stat Arb - Production Configuration
+#
+# Copy to config.yaml on the server. The deploy script does this automatically.
+# Environment variables (POSTGRES_USER, POSTGRES_PASSWORD) are substituted
+# by deploy.sh at install time using sed.
+#
+# To update after deployment: edit /opt/polymarket-stat-arb/config.yaml directly
+# and restart the service: systemctl restart polymarket-collector
+
+polymarket:
+  clob_host: "https://clob.polymarket.com"
+  gamma_host: "https://gamma-api.polymarket.com"
+  data_host: "https://data-api.polymarket.com"
+  ws_host: "wss://ws-subscriptions-clob.polymarket.com"
+  chain_id: 137  # Polygon mainnet
+
+wallet:
+  # Private key is injected at runtime via age decryption (see deploy/start-collector.sh)
+  private_key_env: "POLY_PRIVATE_KEY"
+  funder_address: ""
+  signature_type: 0
+
+risk:
+  max_daily_loss_usd: 50
+  max_drawdown_pct: 20
+  max_consecutive_losses: 5
+  circuit_breaker_state_file: "/opt/polymarket-stat-arb/data/circuit_breaker_state.json"
+
+strategy:
+  min_spread_pct: 2.0
+  min_liquidity_usd: 100
+  max_position_usd: 100
+  max_total_exposure_usd: 500
+  kelly_fraction: 0.25
+  slippage_tolerance_pct: 0.5
+  order_timeout_sec: 30
+  enable_combinatorial: true
+  similarity_threshold: 0.8
+
+scanner:
+  market_refresh_interval: 60
+  price_check_interval: 5
+  websocket_reconnect_delay: 5
+  min_volume_24h: 1000
+  max_days_to_resolution: 30
+
+# Database connection — env vars are substituted by deploy.sh at install time
+# To change credentials: edit this file and restart the service
+database:
+  # Replace POSTGRES_USER and POSTGRES_PASSWORD with actual values
+  # deploy.sh handles this automatically from .env.production
+  url: "postgresql://POSTGRES_USER:POSTGRES_PASSWORD@localhost:5432/polymarket"
+  min_pool_size: 2
+  max_pool_size: 10
+  max_inactive_connection_lifetime: 300.0
+  command_timeout: 60
+
+# Collector intervals (seconds)
+collector:
+  price_interval_sec: 60         # Price snapshots every minute
+  orderbook_interval_sec: 300    # Orderbook snapshots every 5 minutes
+  metadata_interval_sec: 300     # Market metadata refresh every 5 minutes
+  resolution_check_interval_sec: 300  # Resolution check every 5 minutes
+  trade_buffer_size: 1000
+  max_markets: 10000
+
+alerts:
+  telegram:
+    enabled: true
+    bot_token_env: "TELEGRAM_BOT_TOKEN"
+    chat_id: ""  # Set your Telegram chat ID here
+  notify_on_opportunity: true
+  notify_on_trade: true
+  notify_min_spread_pct: 3.0
+
+# Production logging — INFO level, file output
+logging:
+  level: "INFO"
+  file: "/opt/polymarket-stat-arb/logs/collector.log"
+  max_size_mb: 10
+  backup_count: 5
+
+# Safe default — change to false only when ready for live trading
+paper_trading: true

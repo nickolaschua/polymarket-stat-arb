@@ -1,0 +1,44 @@
+# Production Docker Compose for Polymarket Stat Arb
+# TimescaleDB only — the Python collector runs as a systemd service.
+#
+# Usage:
+#   docker compose -f deploy/docker-compose.prod.yml up -d
+#
+# Required environment variables (set in .env.production):
+#   POSTGRES_USER      — database username
+#   POSTGRES_PASSWORD  — database password (generate with: openssl rand -base64 32)
+
+services:
+  timescaledb:
+    image: timescale/timescaledb:latest-pg17
+    container_name: polymarket-timescaledb-prod
+    restart: always
+
+    # Bind to localhost only — never expose to the internet
+    ports:
+      - "127.0.0.1:5432:5432"
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: polymarket
+      TIMESCALEDB_TELEMETRY: "off"
+
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+
+    # Shared memory for TimescaleDB performance
+    shm_size: 256mb
+
+    # Resource limits — leave headroom for Python app on 4 vCPU / 8GB server
+    mem_limit: 2g
+    cpus: '1.0'
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  timescaledb_data:
