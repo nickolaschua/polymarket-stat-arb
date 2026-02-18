@@ -1,0 +1,19 @@
+[Unit]
+Description=Polymarket Statistical Arbitrage Data Collector
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=polymarket
+WorkingDirectory=/opt/polymarket-stat-arb
+ExecStart=/opt/polymarket-stat-arb/deploy/start-collector.sh
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=polymarket-collector
+
+[Install]
+WantedBy=multi-user.target
