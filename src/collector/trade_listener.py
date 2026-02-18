@@ -310,9 +310,20 @@ class TradeListener:
         self._running = True
         self.health.started_at = datetime.now(timezone.utc)
 
-        token_ids = await self._get_active_token_ids()
+        # Retry fetching tokens — markets table may not be populated yet
+        # if the metadata collector hasn't completed its first cycle.
+        token_ids: list[str] = []
+        for attempt in range(1, 31):
+            token_ids = await self._get_active_token_ids()
+            if token_ids:
+                break
+            logger.warning(
+                "No active tokens found, retrying in 10s (%d/30)", attempt
+            )
+            await asyncio.sleep(10)
+
         if not token_ids:
-            logger.warning("No active tokens found — TradeListener not starting")
+            logger.error("No active tokens after 30 retries — giving up")
             self._running = False
             return
 

@@ -133,7 +133,9 @@ class MarketMetadataCollector:
         """
         try:
             await gamma_limiter.acquire()
-            events = await self.client.get_all_active_markets()
+            events = await self.client.get_all_active_markets(
+                max_events=self.config.max_markets,
+            )
             market_dicts = self._extract_markets_from_events(events)
             await upsert_markets(self.pool, market_dicts)
             logger.info(

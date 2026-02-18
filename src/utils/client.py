@@ -132,28 +132,42 @@ class PolymarketClient:
         response.raise_for_status()
         return response.json()
 
-    async def get_all_active_markets(self) -> List[Dict[str, Any]]:
-        """Fetch all active markets with pagination."""
-        all_events = []
+    async def get_all_active_markets(
+        self, max_events: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
+        """Fetch active markets with pagination.
+
+        Parameters
+        ----------
+        max_events:
+            Stop after accumulating this many events.  ``None`` means no limit,
+            but callers should pass ``config.collector.max_markets`` to avoid
+            unbounded memory growth on large Polymarket event sets.
+        """
+        all_events: List[Dict[str, Any]] = []
         offset = 0
         limit = 100
-        
+
         while True:
             data = await self.get_events(active=True, limit=limit, offset=offset)
             events = data if isinstance(data, list) else data.get("data", [])
-            
+
             if not events:
                 break
-            
+
             all_events.extend(events)
             offset += limit
-            
+
+            if max_events is not None and len(all_events) >= max_events:
+                all_events = all_events[:max_events]
+                break
+
             if len(events) < limit:
                 break
-            
+
             # Small delay to respect rate limits
             await asyncio.sleep(0.1)
-        
+
         return all_events
 
     # =========================================================================

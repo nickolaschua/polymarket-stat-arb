@@ -124,7 +124,9 @@ class PriceSnapshotCollector:
         try:
             ts = datetime.now(timezone.utc)
             await gamma_limiter.acquire()
-            events = await self.client.get_all_active_markets()
+            events = await self.client.get_all_active_markets(
+                max_events=self.config.max_markets,
+            )
             tuples = self._extract_price_tuples(events, ts)
 
             if not tuples:
