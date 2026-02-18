@@ -3,11 +3,11 @@
 ## Current Position
 
 Phase: 5 of 5 (Hetzner Deployment)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-02-18 - Completed 05-01-PLAN.md (Production Deployment Artifacts)
+Plan: 2 of 2 in current phase
+Status: Phase complete — v0.1 milestone complete
+Last activity: 2026-02-18 - Completed 05-02-PLAN.md (Server Provisioning + Deployment)
 
-Progress: ██████████████░ 94%
+Progress: ██████████████████ 100%
 
 ## Accumulated Context
 
@@ -51,6 +51,11 @@ Progress: ██████████████░ 94%
 - age encryption over GPG for wallet key: simpler single-binary tool (05-01)
 - Docker localhost-only binding (127.0.0.1:5432) for production — never exposed to internet (05-01)
 - Idempotent deploy.sh: checks at every step before creating/cloning/installing (05-01)
+- Docker from official apt repo, not Ubuntu default (docker-compose-plugin unavailable otherwise) (05-02)
+- sslmode=disable for localhost Docker TimescaleDB (no SSL needed for local connection) (05-02)
+- max_markets=10000 cap on all collectors to prevent unbounded memory/API usage (05-02)
+- Trade listener retry loop (30x10s) for markets table race condition on startup (05-02)
+- OrderBookSummary attribute access (not dict) for py-clob-client compatibility (05-02)
 
 ### Critical Constraints
 - Geoblocking: Local Windows machine cannot access Polymarket APIs. All local tests use mocked responses (respx). Live data collection only from Hetzner.
@@ -67,6 +72,6 @@ Progress: ██████████████░ 94%
 
 ## Session Continuity
 
-Last session: 2026-02-18
-Stopped at: Completed 05-01-PLAN.md (Production Deployment Artifacts)
+Last session: 2026-02-19
+Stopped at: v0.1 milestone complete — all phases finished
 Resume file: none
