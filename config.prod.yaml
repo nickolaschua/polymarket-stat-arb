@@ -49,7 +49,7 @@ scanner:
 database:
   # Replace POSTGRES_USER and POSTGRES_PASSWORD with actual values
   # deploy.sh handles this automatically from .env.production
-  url: "postgresql://POSTGRES_USER:POSTGRES_PASSWORD@localhost:5432/polymarket?sslmode=disable"
+  url: "postgresql://POSTGRES_USER:POSTGRES_PASSWORD@localhost:5432/polymarket?sslmode=prefer"
   min_pool_size: 2
   max_pool_size: 10
   max_inactive_connection_lifetime: 300.0
