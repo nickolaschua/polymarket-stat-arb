@@ -64,5 +64,9 @@ htmlcov/
 # Jupyter
 .ipynb_checkpoints/
 
+# Age encryption
+*.age
+keys.txt
+
 # Ralph Wiggum
 ralph.pid

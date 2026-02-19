@@ -406,6 +406,9 @@ class CollectorDaemon:
         # Gracefully stop TradeListener (flushes queue before stopping)
         await self._trade_listener.stop()
 
+        # Close ResolutionTracker's HTTP client
+        await self._resolutions.close()
+
         # Wait for all tasks to finish
         await asyncio.gather(*self._tasks.values(), return_exceptions=True)
 

@@ -57,10 +57,9 @@ async def insert_trades(pool: asyncpg.Pool, trades: list[tuple]) -> int:
             """,
             trades,
         )
-        # Count how many are actually in the table now for this batch.
-        # Return original length — the caller cares about "records processed".
-        row = await pool.fetchrow("SELECT count(*) AS cnt FROM trades")
-        return row["cnt"]
+        # Return batch length — the caller cares about "records processed".
+        # (Previous code counted the entire table, which is wrong.)
+        return len(trades)
 
 
 async def get_recent_trades(

@@ -103,6 +103,8 @@ def retry(
         on_retry: Optional callback(attempt, exception, delay) called before each retry.
     """
 
+    retryable_exceptions_tuple = tuple(retryable_exceptions)
+
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
@@ -113,7 +115,7 @@ def retry(
                     return await func(*args, **kwargs)
                 except FATAL_EXCEPTIONS:
                     raise
-                except tuple(retryable_exceptions) as e:
+                except retryable_exceptions_tuple as e:
                     last_exception = e
 
                     if attempt == max_attempts:
@@ -180,6 +182,8 @@ def retry_sync(
 ):
     """Decorator for retrying synchronous functions with exponential backoff."""
 
+    retryable_exceptions_tuple = tuple(retryable_exceptions)
+
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -190,7 +194,7 @@ def retry_sync(
                     return func(*args, **kwargs)
                 except FATAL_EXCEPTIONS:
                     raise
-                except tuple(retryable_exceptions) as e:
+                except retryable_exceptions_tuple as e:
                     last_exception = e
 
                     if attempt == max_attempts:
@@ -241,37 +245,49 @@ class RateLimiter:
         self.name = name or f"limiter-{max_requests}/{window_seconds}s"
         self._timestamps: deque = deque()
         self._retry_after: float = 0.0
+        self._lock: asyncio.Lock | None = None
+
+    def _get_lock(self) -> asyncio.Lock:
+        """Return the lock, creating it lazily (must be in an event loop)."""
+        if self._lock is None:
+            self._lock = asyncio.Lock()
+        return self._lock
 
     async def acquire(self):
-        """Wait until a request slot is available."""
-        # Respect Retry-After from previous 429 response
-        if self._retry_after > time.time():
-            wait = self._retry_after - time.time()
-            logger.info(
-                "%s: Retry-After active, waiting %.1fs", self.name, wait
-            )
-            await asyncio.sleep(wait)
+        """Wait until a request slot is available.
 
-        now = time.time()
-        cutoff = now - self.window_seconds
+        Uses an asyncio.Lock to prevent concurrent callers from
+        over-admitting past the rate limit.
+        """
+        async with self._get_lock():
+            # Respect Retry-After from previous 429 response
+            if self._retry_after > time.time():
+                wait = self._retry_after - time.time()
+                logger.info(
+                    "%s: Retry-After active, waiting %.1fs", self.name, wait
+                )
+                await asyncio.sleep(wait)
 
-        # Remove expired timestamps
-        while self._timestamps and self._timestamps[0] < cutoff:
-            self._timestamps.popleft()
+            now = time.time()
+            cutoff = now - self.window_seconds
 
-        # If at capacity, wait for the oldest request to expire
-        if len(self._timestamps) >= self.max_requests:
-            wait = self._timestamps[0] - cutoff + 0.05  # 50ms buffer
-            logger.debug(
-                "%s: Rate limit reached (%d/%d), waiting %.2fs",
-                self.name,
-                len(self._timestamps),
-                self.max_requests,
-                wait,
-            )
-            await asyncio.sleep(max(0, wait))
+            # Remove expired timestamps
+            while self._timestamps and self._timestamps[0] < cutoff:
+                self._timestamps.popleft()
 
-        self._timestamps.append(time.time())
+            # If at capacity, wait for the oldest request to expire
+            if len(self._timestamps) >= self.max_requests:
+                wait = self._timestamps[0] - cutoff + 0.05  # 50ms buffer
+                logger.debug(
+                    "%s: Rate limit reached (%d/%d), waiting %.2fs",
+                    self.name,
+                    len(self._timestamps),
+                    self.max_requests,
+                    wait,
+                )
+                await asyncio.sleep(max(0, wait))
+
+            self._timestamps.append(time.time())
 
     def record_response(self, response: httpx.Response):
         """Record response headers to adjust rate limiting."""

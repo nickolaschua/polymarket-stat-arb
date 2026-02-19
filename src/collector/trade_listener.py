@@ -270,11 +270,11 @@ class TradeListener:
                         pass
                     self.health.connections_active -= 1
             except ConnectionClosed:
-                self.health.connections_active -= 1
+                # connections_active already decremented by inner finally
                 logger.warning("WebSocket disconnected, reconnecting...")
                 continue
             except asyncio.CancelledError:
-                self.health.connections_active -= 1
+                # connections_active already decremented by inner finally
                 break
 
     async def _get_active_token_ids(self) -> list[str]:

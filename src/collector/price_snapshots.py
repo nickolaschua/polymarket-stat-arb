@@ -105,8 +105,17 @@ class PriceSnapshotCollector:
                 for token_id, price_str in zip(token_ids, prices):
                     if not token_id:
                         continue
+                    try:
+                        price = float(price_str)
+                    except (ValueError, TypeError):
+                        logger.warning(
+                            "Skipping token %s — bad price: %.40s",
+                            token_id,
+                            price_str,
+                        )
+                        continue
                     tuples.append(
-                        (ts, str(token_id), float(price_str), volume_24h)
+                        (ts, str(token_id), price, volume_24h)
                     )
 
         return tuples

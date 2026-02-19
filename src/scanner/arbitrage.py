@@ -3,8 +3,8 @@
 import json
 import logging
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime, timezone
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ class ArbitrageScanner:
                 yes_liquidity=yes_liq,
                 no_liquidity=no_liq,
                 max_executable_usd=max_executable,
-                detected_at=datetime.utcnow(),
+                detected_at=datetime.now(timezone.utc),
                 event_id=market.event_id
             )
             

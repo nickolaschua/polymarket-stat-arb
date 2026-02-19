@@ -11,6 +11,7 @@ Usage::
         rows = await conn.fetch("SELECT 1")
 """
 
+import asyncio
 import logging
 from typing import Optional
 
@@ -22,6 +23,15 @@ logger = logging.getLogger(__name__)
 
 _pool: Optional[asyncpg.Pool] = None
 _pool_closed: bool = True
+_pool_lock: asyncio.Lock | None = None
+
+
+def _get_lock() -> asyncio.Lock:
+    """Return the module-level pool lock, creating it lazily."""
+    global _pool_lock
+    if _pool_lock is None:
+        _pool_lock = asyncio.Lock()
+    return _pool_lock
 
 
 async def get_pool() -> asyncpg.Pool:
@@ -30,27 +40,35 @@ async def get_pool() -> asyncpg.Pool:
     Reads DSN and pool tuning parameters from ``get_config().database``.
     The pool is created once and reused for the lifetime of the process
     (or until ``close_pool()`` is called).
+
+    Uses an asyncio.Lock to prevent concurrent callers from creating
+    duplicate pools.
     """
     global _pool, _pool_closed
 
     if _pool is not None and not _pool_closed:
         return _pool
 
-    db = get_config().database
+    async with _get_lock():
+        # Double-checked locking: re-check after acquiring lock
+        if _pool is not None and not _pool_closed:
+            return _pool
 
-    logger.info("Creating asyncpg connection pool (min=%d, max=%d)", db.min_pool_size, db.max_pool_size)
+        db = get_config().database
 
-    _pool = await asyncpg.create_pool(
-        dsn=db.url,
-        min_size=db.min_pool_size,
-        max_size=db.max_pool_size,
-        max_inactive_connection_lifetime=db.max_inactive_connection_lifetime,
-        command_timeout=db.command_timeout,
-    )
-    _pool_closed = False
+        logger.info("Creating asyncpg connection pool (min=%d, max=%d)", db.min_pool_size, db.max_pool_size)
 
-    logger.info("asyncpg connection pool created successfully")
-    return _pool
+        _pool = await asyncpg.create_pool(
+            dsn=db.url,
+            min_size=db.min_pool_size,
+            max_size=db.max_pool_size,
+            max_inactive_connection_lifetime=db.max_inactive_connection_lifetime,
+            command_timeout=db.command_timeout,
+        )
+        _pool_closed = False
+
+        logger.info("asyncpg connection pool created successfully")
+        return _pool
 
 
 async def close_pool() -> None:

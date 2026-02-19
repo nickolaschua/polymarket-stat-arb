@@ -2,8 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
-from typing import List
+from datetime import datetime, timezone
 
 from rich.console import Console
 from rich.table import Table
@@ -31,8 +30,8 @@ class MarketScanner:
             min_spread_pct=self.config.strategy.min_spread_pct,
             min_liquidity=self.config.strategy.min_liquidity_usd
         )
-        self.markets: List[Market] = []
-        self.opportunities: List[ArbitrageOpportunity] = []
+        self.markets: list[Market] = []
+        self.opportunities: list[ArbitrageOpportunity] = []
         self._running = False
 
     async def refresh_markets(self):
@@ -57,7 +56,7 @@ class MarketScanner:
         except Exception as e:
             logger.error(f"Failed to refresh markets: {e}")
 
-    def scan_for_opportunities(self) -> List[ArbitrageOpportunity]:
+    def scan_for_opportunities(self) -> list[ArbitrageOpportunity]:
         """Run all arbitrage scans on current market data."""
         opportunities = []
         
@@ -73,7 +72,7 @@ class MarketScanner:
         self.opportunities = opportunities
         return opportunities
 
-    def display_opportunities(self, opportunities: List[ArbitrageOpportunity]):
+    def display_opportunities(self, opportunities: list[ArbitrageOpportunity]):
         """Display opportunities in a nice table."""
         if not opportunities:
             console.print("[dim]No arbitrage opportunities found[/dim]")
@@ -104,7 +103,7 @@ class MarketScanner:
     async def run_once(self):
         """Run a single scan cycle."""
         console.print(f"\n[bold blue]{'='*60}[/bold blue]")
-        console.print(f"[bold]Scan at {datetime.utcnow().isoformat()}[/bold]")
+        console.print(f"[bold]Scan at {datetime.now(timezone.utc).isoformat()}[/bold]")
         
         await self.refresh_markets()
         opportunities = self.scan_for_opportunities()
