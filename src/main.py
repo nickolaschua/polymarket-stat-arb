@@ -235,5 +235,43 @@ def book(ctx, token_id: str):
         console.print(f"[red]Error: {e}[/red]")
 
 
+@cli.command()
+@click.pass_context
+def signals(ctx):
+    """Scan for trading signals (read-only analysis)."""
+
+    async def run_signals():
+        from pathlib import Path
+
+        from src.db.pool import get_pool, close_pool
+        from src.db.migrations.runner import run_migrations
+        from src.analysis.signals import get_all_signals
+
+        pool = await get_pool()
+        migrations_dir = Path(__file__).resolve().parent / "db" / "migrations"
+        await run_migrations(pool, migrations_dir)
+
+        try:
+            all_signals = await get_all_signals(pool)
+            if not all_signals:
+                console.print("[yellow]No signals found.[/yellow]")
+                return
+
+            console.print(f"[bold]Found {len(all_signals)} signal(s):[/bold]\n")
+            for sig in all_signals:
+                direction_color = "green" if sig.direction == "buy" else "red"
+                console.print(
+                    f"[{direction_color}]{sig.direction.upper()}[/{direction_color}] "
+                    f"[bold]{sig.signal_type}[/bold] "
+                    f"token={sig.token_id[:20]}... "
+                    f"edge={sig.edge_pct:.2f}% "
+                    f"strength={sig.strength:.2f}"
+                )
+        finally:
+            await close_pool()
+
+    asyncio.run(run_signals())
+
+
 if __name__ == "__main__":
     cli()

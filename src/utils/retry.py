@@ -297,14 +297,17 @@ class RateLimiter:
 
 
 # Pre-configured rate limiters for Polymarket APIs
-# Gamma API: ~1000 req/hour → ~16/min, conservative at 12/min
-gamma_limiter = RateLimiter(max_requests=12, window_seconds=60, name="gamma")
+# All limits from docs/POLYMARKET_VERIFIED_REFERENCE.md (verified 2026-02-15)
+# We use ~70% of documented limits as safety margin.
 
-# CLOB public endpoints: conservative at 100/min
-clob_read_limiter = RateLimiter(max_requests=100, window_seconds=60, name="clob-read")
+# Gamma API: /markets 300/10s, /events 500/10s → conservative at 200/10s
+gamma_limiter = RateLimiter(max_requests=200, window_seconds=10, name="gamma")
 
-# CLOB trading endpoints: ~60 orders/min per docs
-clob_trade_limiter = RateLimiter(max_requests=50, window_seconds=60, name="clob-trade")
+# CLOB public endpoints: /book 1500/10s, general 9000/10s → conservative at 1000/10s
+clob_read_limiter = RateLimiter(max_requests=1000, window_seconds=10, name="clob-read")
+
+# CLOB trading: POST /order 36000/10min sustained (60/s) → conservative at 400/10s
+clob_trade_limiter = RateLimiter(max_requests=400, window_seconds=10, name="clob-trade")
 
 
 def _delay_for_status(
