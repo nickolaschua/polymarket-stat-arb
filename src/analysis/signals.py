@@ -11,7 +11,6 @@ Signal types:
 """
 
 import logging
-import math
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -157,18 +156,26 @@ async def generate_mean_reversion_signals(
     """
     signals: list[MarketSignal] = []
     try:
-        # Compute z-score for each token in the window in SQL
+        # Compute z-score for each token in the window in SQL.
+        # Uses per-token MAX(ts) for lookback (not NOW()) so it works
+        # on historical data and during backtesting.
         rows = await pool.fetch(
             """
-            WITH stats AS (
-                SELECT
-                    token_id,
-                    avg(price) AS mean_price,
-                    stddev(price) AS std_price,
-                    last(price, ts) AS latest_price
+            WITH per_token_latest AS (
+                SELECT token_id, MAX(ts) AS max_ts
                 FROM price_snapshots
-                WHERE ts >= NOW() - ($1 || ' hours')::interval
                 GROUP BY token_id
+            ),
+            stats AS (
+                SELECT
+                    ps.token_id,
+                    avg(ps.price) AS mean_price,
+                    stddev(ps.price) AS std_price,
+                    last(ps.price, ps.ts) AS latest_price
+                FROM price_snapshots ps
+                JOIN per_token_latest ptl ON ps.token_id = ptl.token_id
+                WHERE ps.ts >= ptl.max_ts - ($1 || ' hours')::interval
+                GROUP BY ps.token_id
                 HAVING count(*) >= 5
             )
             SELECT
@@ -195,7 +202,7 @@ async def generate_mean_reversion_signals(
             # Revert to mean: if price is high, sell; if low, buy
             direction = "sell" if z > 0 else "buy"
             strength = min(abs(z) / (z_threshold * 2), 1.0)
-            edge_pct = abs(z - z_threshold) * float(row["std_price"] or 0) * 100.0
+            edge_pct = (abs(z) - z_threshold) * float(row["std_price"] or 0) * 100.0
 
             market_row = await pool.fetchrow(
                 """

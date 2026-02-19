@@ -8,7 +8,6 @@ so callers can safely aggregate results.
 """
 
 import logging
-import math
 from dataclasses import dataclass, field
 
 import asyncpg
@@ -218,12 +217,18 @@ async def find_correlated_pairs(
     pool: asyncpg.Pool,
     min_correlation: float = 0.7,
     lookback_hours: int = 168,
+    max_tokens: int = 50,
 ) -> list[tuple[str, str, float]]:
     """Scan active markets for highly correlated token pairs.
 
-    Computes pairwise Pearson correlation for all active market tokens
+    Computes pairwise Pearson correlation for active market tokens
     that have price data in the lookback window.  Only pairs meeting the
     ``min_correlation`` threshold are returned.
+
+    Performance: Pairwise correlation is O(n^2) in SQL queries.
+    ``max_tokens`` caps the token count to keep this tractable
+    (50 tokens = 1,225 pairs; 100 = 4,950).  Tokens are selected by
+    highest data density (most price snapshots in the window).
 
     Parameters
     ----------
@@ -233,6 +238,9 @@ async def find_correlated_pairs(
         Minimum |correlation| to include in results (default 0.7).
     lookback_hours:
         Look-back window in hours (default 168 = 7 days).
+    max_tokens:
+        Maximum number of tokens to scan (default 50).  Tokens with the
+        most price data in the window are selected first.
 
     Returns
     -------
@@ -241,16 +249,26 @@ async def find_correlated_pairs(
         ordered by |correlation| descending.  Returns empty list on error.
     """
     try:
-        # Gather tokens that have data in the window (relative to each token's latest ts)
+        # Select tokens with the most data points in the window,
+        # capped at max_tokens to keep O(n^2) tractable.
         rows = await pool.fetch(
             """
-            SELECT DISTINCT token_id
+            WITH per_token AS (
+                SELECT token_id, MAX(ts) AS max_ts
+                FROM price_snapshots
+                GROUP BY token_id
+            )
+            SELECT ps.token_id, COUNT(*) AS n
             FROM price_snapshots ps
-            WHERE ts >= (
-                SELECT MAX(ts) FROM price_snapshots WHERE token_id = ps.token_id
-            ) - ($1 || ' hours')::interval
+            JOIN per_token pt ON ps.token_id = pt.token_id
+            WHERE ps.ts >= pt.max_ts - ($1 || ' hours')::interval
+            GROUP BY ps.token_id
+            HAVING COUNT(*) >= 5
+            ORDER BY n DESC
+            LIMIT $2
             """,
             str(lookback_hours),
+            max_tokens,
         )
         token_ids = [row["token_id"] for row in rows]
 
@@ -343,13 +361,16 @@ async def detect_mispricing(
         if abs(deviation) <= tolerance:
             return []
 
-        fair_price = 1.0 / len(yes_token_prices)
-        underpriced = [
-            t for t, p in yes_token_prices.items() if p < fair_price
-        ]
-        overpriced = [
-            t for t, p in yes_token_prices.items() if p > fair_price
-        ]
+        # For same-event arbitrage: when yes_sum < 1.0 all outcomes are
+        # collectively underpriced (buy all = guaranteed profit);
+        # when yes_sum > 1.0 all are overpriced (sell all = guaranteed profit).
+        all_tokens = list(yes_token_prices.keys())
+        if deviation < 0:
+            underpriced = all_tokens
+            overpriced = []
+        else:
+            underpriced = []
+            overpriced = all_tokens
 
         return [
             Mispricing(

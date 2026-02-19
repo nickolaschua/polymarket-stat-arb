@@ -7,7 +7,7 @@ rather than raising, so callers can safely aggregate results.
 
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 import asyncpg
 
@@ -198,18 +198,22 @@ async def get_spread_history(
         List of ``(ts, spread, midpoint)`` tuples ordered oldest-first.
         Returns empty list on error or no data.
     """
-    since = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
     try:
         rows = await pool.fetch(
             """
-            SELECT ts, spread, midpoint
-            FROM orderbook_snapshots
-            WHERE token_id = $1
-              AND ts >= $2
-            ORDER BY ts ASC
+            WITH latest AS (
+                SELECT MAX(ts) AS max_ts
+                FROM orderbook_snapshots
+                WHERE token_id = $1
+            )
+            SELECT os.ts, os.spread, os.midpoint
+            FROM orderbook_snapshots os, latest
+            WHERE os.token_id = $1
+              AND os.ts >= latest.max_ts - ($2 || ' hours')::interval
+            ORDER BY os.ts ASC
             """,
             token_id,
-            since,
+            str(lookback_hours),
         )
         return [(row["ts"], row["spread"], row["midpoint"]) for row in rows]
     except Exception:
