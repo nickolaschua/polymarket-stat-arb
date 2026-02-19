@@ -50,7 +50,7 @@ class PolymarketClient:
         wallet = self.config.wallet
         
         if not wallet.private_key:
-            logger.error(f"Private key not found in env var: {wallet.private_key_env}")
+            logger.error("Private key environment variable is not set")
             return False
         
         if not wallet.funder_address:
